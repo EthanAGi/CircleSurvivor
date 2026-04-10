@@ -36,3 +36,16 @@ offset_top = 340.0
 offset_right = 720.0
 offset_bottom = 390.0
 text = "Restart"
+
+[node name="LevelLabel" type="Label" parent="UI" unique_id=1482666793]
+offset_left = 20.0
+offset_top = 50.0
+offset_right = 60.0
+offset_bottom = 73.0
+
+[node name="ExpLabel" type="Label" parent="UI" unique_id=1346022624]
+offset_left = 20.0
+offset_top = 80.0
+offset_right = 91.0
+offset_bottom = 103.0
+text = "EXP: 0 / 5"

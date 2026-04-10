@@ -1,7 +1,10 @@
 extends Area2D
 
+signal died(enemy_position: Vector2, exp_amount: int)
+
 @export var speed: float = 120.0
 @export var max_health: int = 3
+@export var exp_drop_amount: int = 1
 
 var player: Node2D = null
 var is_active: bool = true
@@ -42,12 +45,12 @@ func die() -> void:
 		return
 
 	is_dead = true
+	died.emit(global_position, exp_drop_amount)
 	queue_free()
 
 func _draw() -> void:
 	var color := Color(1.0, 0.2, 0.2)
 
-	# Slightly change color as enemy gets damaged.
 	if current_health == 2:
 		color = Color(1.0, 0.45, 0.2)
 	elif current_health == 1:

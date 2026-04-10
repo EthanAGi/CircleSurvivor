@@ -2,15 +2,29 @@ extends CharacterBody2D
 
 signal died
 signal shoot_requested(position: Vector2)
+signal exp_changed(level: int, current_exp: int, exp_to_next: int)
+signal leveled_up(level: int)
 
 @export var speed: float = 250.0
+@export var starting_level: int = 1
+@export var starting_exp_to_next: int = 5
+@export var exp_growth_per_level: int = 3
 
 @onready var fire_timer: Timer = $FireTimer
 
 var is_dead: bool = false
 
+var level: int = 1
+var current_exp: int = 0
+var exp_to_next: int = 5
+
 func _ready() -> void:
+	level = starting_level
+	current_exp = 0
+	exp_to_next = starting_exp_to_next
+
 	fire_timer.timeout.connect(_on_fire_timer_timeout)
+	exp_changed.emit(level, current_exp, exp_to_next)
 	queue_redraw()
 
 func _physics_process(_delta: float) -> void:
@@ -26,6 +40,20 @@ func _physics_process(_delta: float) -> void:
 
 	velocity = input_vector * speed
 	move_and_slide()
+
+func gain_experience(amount: int) -> void:
+	if is_dead:
+		return
+
+	current_exp += amount
+
+	while current_exp >= exp_to_next:
+		current_exp -= exp_to_next
+		level += 1
+		exp_to_next += exp_growth_per_level
+		leveled_up.emit(level)
+
+	exp_changed.emit(level, current_exp, exp_to_next)
 
 func die() -> void:
 	if is_dead:

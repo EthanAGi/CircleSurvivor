@@ -3,11 +3,14 @@ extends Node2D
 @onready var player = $Player
 @onready var spawn_timer = $SpawnTimer
 @onready var time_label = $UI/TimeLabel
+@onready var level_label = $UI/LevelLabel
+@onready var exp_label = $UI/ExpLabel
 @onready var game_over_label = $UI/GameOverLabel
 @onready var restart_button = $UI/RestartButton
 
 var enemy_scene: PackedScene = preload("res://scenes/enemy.tscn")
 var bullet_scene: PackedScene = preload("res://scenes/bullet.tscn")
+var exp_pickup_scene: PackedScene = preload("res://scenes/exp_pickup.tscn")
 
 var game_over: bool = false
 var survival_time: float = 0.0
@@ -26,6 +29,9 @@ func _ready() -> void:
 
 	player.died.connect(_on_player_died)
 	player.shoot_requested.connect(_on_player_shoot_requested)
+	player.exp_changed.connect(_on_player_exp_changed)
+	player.leveled_up.connect(_on_player_leveled_up)
+
 	spawn_timer.timeout.connect(_on_spawn_timer_timeout)
 	restart_button.pressed.connect(_on_restart_button_pressed)
 
@@ -33,6 +39,8 @@ func _ready() -> void:
 	restart_button.visible = false
 
 	spawn_timer.wait_time = 1.0
+
+	_on_player_exp_changed(player.level, player.current_exp, player.exp_to_next)
 
 func _process(delta: float) -> void:
 	if game_over:
@@ -94,6 +102,7 @@ func _on_spawn_timer_timeout() -> void:
 	enemy.player = player
 	enemy.global_position = _get_spawn_position()
 	enemy.body_entered.connect(_on_enemy_body_entered)
+	enemy.died.connect(_on_enemy_died)
 
 func _on_player_shoot_requested(spawn_position: Vector2) -> void:
 	if game_over:
@@ -107,6 +116,35 @@ func _on_player_shoot_requested(spawn_position: Vector2) -> void:
 	add_child(bullet)
 	bullet.global_position = spawn_position
 	bullet.direction = (target.global_position - spawn_position).normalized()
+
+func _on_enemy_died(enemy_position: Vector2, exp_amount: int) -> void:
+	if game_over:
+		return
+
+	call_deferred("_spawn_exp_pickup", enemy_position, exp_amount)
+
+func _spawn_exp_pickup(enemy_position: Vector2, exp_amount: int) -> void:
+	if game_over:
+		return
+
+	var exp_pickup = exp_pickup_scene.instantiate()
+	add_child(exp_pickup)
+	exp_pickup.global_position = enemy_position
+	exp_pickup.setup(player, exp_amount)
+	exp_pickup.collected.connect(_on_exp_collected)
+
+func _on_exp_collected(amount: int) -> void:
+	if game_over:
+		return
+
+	player.gain_experience(amount)
+
+func _on_player_exp_changed(level: int, current_exp: int, exp_to_next: int) -> void:
+	level_label.text = "Level: %d" % level
+	exp_label.text = "EXP: %d / %d" % [current_exp, exp_to_next]
+
+func _on_player_leveled_up(new_level: int) -> void:
+	print("Level up! New level: ", new_level)
 
 func _get_nearest_enemy() -> Area2D:
 	var nearest: Area2D = null
