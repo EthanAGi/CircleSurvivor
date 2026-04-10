@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://b84lyk3gw17kb"]
+
+[ext_resource type="Script" uid="uid://cyvc1bpmnohh4" path="res://scenes/player.gd" id="1_3vyb7"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_u8vuu"]
+radius = 20.0
+
+[node name="Player" type="CharacterBody2D" unique_id=94823281]
+script = ExtResource("1_3vyb7")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=65790469]
+shape = SubResource("CircleShape2D_u8vuu")
+
+[node name="Visual" type="Node2D" parent="." unique_id=1100723647]
+
+[node name="FireTimer" type="Timer" parent="." unique_id=1501857504]
+wait_time = 0.5
+autostart = true
