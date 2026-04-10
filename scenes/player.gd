@@ -55,6 +55,12 @@ func gain_experience(amount: int) -> void:
 
 	exp_changed.emit(level, current_exp, exp_to_next)
 
+func set_fire_rate(new_wait_time: float) -> void:
+	fire_timer.wait_time = new_wait_time
+
+	if not is_dead:
+		fire_timer.start()
+
 func die() -> void:
 	if is_dead:
 		return

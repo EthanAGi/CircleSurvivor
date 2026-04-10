@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://cfrrb2f2dbpg1"]
+
+[ext_resource type="Script" uid="uid://q478mkobfukm" path="res://orbit_ball.gd" id="1_xvgcj"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_i5t2e"]
+
+[node name="OrbitBall" type="Area2D" unique_id=1391782274]
+collision_layer = 128
+collision_mask = 2
+script = ExtResource("1_xvgcj")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=904414146]
+shape = SubResource("CircleShape2D_i5t2e")
