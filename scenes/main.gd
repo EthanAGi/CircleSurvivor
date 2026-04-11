@@ -19,6 +19,7 @@ var enemy_scene: PackedScene = preload("res://scenes/enemy.tscn")
 var bullet_scene: PackedScene = preload("res://scenes/bullet.tscn")
 var exp_pickup_scene: PackedScene = preload("res://scenes/exp_pickup.tscn")
 var orbit_ball_scene: PackedScene = preload("res://scenes/orbit_ball.tscn")
+var lightning_scene: PackedScene = preload("res://scenes/lightning.tscn")
 
 var game_over: bool = false
 var survival_time: float = 0.0
@@ -26,11 +27,18 @@ var rng := RandomNumberGenerator.new()
 
 var bullet_level: int = 1
 var orbit_ball_level: int = 0
+var lightning_level: int = 0
 
 var orbit_ball_cooldown: float = 99999.0
 var orbit_ball_duration: float = 0.0
 var orbit_ball_count: int = 0
 var orbit_ball_timer: float = 0.0
+
+var lightning_cooldown: float = 99999.0
+var lightning_range: float = 0.0
+var lightning_strike_count: int = 0
+var lightning_damage: int = 0
+var lightning_timer: float = 0.0
 
 var level_up_choices: Array = []
 
@@ -83,6 +91,7 @@ func _process(delta: float) -> void:
 	spawn_timer.wait_time = max(0.25, 1.0 - survival_time * 0.02)
 
 	_handle_orbit_ball_weapon(delta)
+	_handle_lightning_weapon(delta)
 
 	queue_redraw()
 
@@ -141,6 +150,58 @@ func _spawn_orbit_balls() -> void:
 		orbit_ball.player = player
 		orbit_ball.lifetime = orbit_ball_duration
 		orbit_ball.angle_offset = TAU * float(i) / float(orbit_ball_count)
+
+func _handle_lightning_weapon(delta: float) -> void:
+	if lightning_level <= 0:
+		return
+
+	lightning_timer -= delta
+
+	if lightning_timer <= 0.0:
+		lightning_timer = lightning_cooldown
+		_fire_lightning_weapon()
+
+func _fire_lightning_weapon() -> void:
+	var nearby_enemies: Array = _get_enemies_in_range(lightning_range)
+
+	if nearby_enemies.is_empty():
+		return
+
+	var strikes_to_fire: int = min(lightning_strike_count, nearby_enemies.size())
+
+	for i in range(strikes_to_fire):
+		var enemy: Area2D = nearby_enemies[i]
+
+		if enemy == null or not is_instance_valid(enemy):
+			continue
+
+		var lightning = lightning_scene.instantiate()
+		add_child(lightning)
+		lightning.global_position = enemy.global_position
+
+		if enemy.has_method("take_damage"):
+			enemy.take_damage(lightning_damage)
+
+func _get_enemies_in_range(range_limit: float) -> Array:
+	var enemies_in_range: Array = []
+
+	for child in get_children():
+		if child is Area2D and child.scene_file_path.ends_with("enemy.tscn"):
+			if not is_instance_valid(child):
+				continue
+
+			var distance: float = player.global_position.distance_to(child.global_position)
+			if distance <= range_limit:
+				enemies_in_range.append(child)
+
+	enemies_in_range.sort_custom(_sort_enemies_by_distance)
+
+	return enemies_in_range
+
+func _sort_enemies_by_distance(a: Area2D, b: Area2D) -> bool:
+	var da: float = player.global_position.distance_to(a.global_position)
+	var db: float = player.global_position.distance_to(b.global_position)
+	return da < db
 
 func _on_spawn_timer_timeout() -> void:
 	if game_over:
@@ -235,10 +296,16 @@ func _build_level_up_choices() -> Array:
 			"text": "Upgrade Orbit Ball\nSpawn more often and later add another ball"
 		})
 
-	choices.append({
-		"id": "heal_choice",
-		"text": "Minor Bonus\nNothing else yet"
-	})
+	if lightning_level == 0:
+		choices.append({
+			"id": "unlock_lightning",
+			"text": "Unlock Lightning\nStrikes nearby enemies automatically"
+		})
+	else:
+		choices.append({
+			"id": "lightning_upgrade",
+			"text": "Upgrade Lightning\nMore strikes, more range, more damage"
+		})
 
 	return choices
 
@@ -269,8 +336,13 @@ func _on_level_up_choice_pressed(index: int) -> void:
 		"orbit_upgrade":
 			orbit_ball_level += 1
 			_apply_orbit_ball_upgrade_stats()
-		"heal_choice":
-			pass
+		"unlock_lightning":
+			lightning_level = 1
+			_apply_lightning_upgrade_stats()
+			lightning_timer = 0.1
+		"lightning_upgrade":
+			lightning_level += 1
+			_apply_lightning_upgrade_stats()
 
 	_close_level_up_menu()
 
@@ -315,6 +387,34 @@ func _apply_orbit_ball_upgrade_stats() -> void:
 			orbit_ball_cooldown = 1.6
 			orbit_ball_duration = 3.2
 			orbit_ball_count = 2
+
+func _apply_lightning_upgrade_stats() -> void:
+	match lightning_level:
+		1:
+			lightning_cooldown = 3.2
+			lightning_range = 260.0
+			lightning_strike_count = 1
+			lightning_damage = 2
+		2:
+			lightning_cooldown = 2.8
+			lightning_range = 300.0
+			lightning_strike_count = 1
+			lightning_damage = 3
+		3:
+			lightning_cooldown = 2.4
+			lightning_range = 340.0
+			lightning_strike_count = 2
+			lightning_damage = 3
+		4:
+			lightning_cooldown = 2.0
+			lightning_range = 380.0
+			lightning_strike_count = 2
+			lightning_damage = 4
+		_:
+			lightning_cooldown = 1.7
+			lightning_range = 430.0
+			lightning_strike_count = 3
+			lightning_damage = 4
 
 func _get_nearest_enemy() -> Area2D:
 	var nearest: Area2D = null
