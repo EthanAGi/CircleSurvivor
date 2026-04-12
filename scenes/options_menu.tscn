@@ -1,0 +1,52 @@
+[gd_scene format=3 uid="uid://cfkhy5d0rhyfv"]
+
+[ext_resource type="Script" uid="uid://by0w8wa4uth1g" path="res://scripts/options_menu.gd" id="1_liyum"]
+
+[node name="OptionsMenu" type="Control" unique_id=1314462085]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_liyum")
+
+[node name="Bakground" type="ColorRect" parent="." unique_id=472146719]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=444999796]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="CenterContainer" unique_id=258783919]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="CenterContainer/PanelContainer" unique_id=892111556]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer/PanelContainer/MarginContainer" unique_id=1075241189]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer" unique_id=1438274104]
+layout_mode = 2
+text = "Options"
+
+[node name="InfoLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer" unique_id=1742308290]
+layout_mode = 2
+text = "Options menu coming soon"
+autowrap_mode = 2
+justification_flags = 162
+
+[node name="BackButton" type="Button" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer" unique_id=798345329]
+layout_mode = 2
+text = "Back"
