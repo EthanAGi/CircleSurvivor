@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bu6ompp7r0kcp"]
 
-[ext_resource type="Script" uid="uid://cjvebnoq5i0h1" path="res://lightning.gd" id="1_k2dum"]
+[ext_resource type="Script" uid="uid://cjvebnoq5i0h1" path="res://scripts/lightning.gd" id="1_k2dum"]
 
 [node name="Lightning" type="Node2D" unique_id=423088898]
 script = ExtResource("1_k2dum")

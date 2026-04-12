@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://t56vrigpl1ep"]
+
+[ext_resource type="Script" uid="uid://6dogfobh65mb" path="res://scripts/missile.gd" id="1_np454"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_6cx5e"]
+
+[node name="Missile" type="Area2D" unique_id=1607672116]
+collision_layer = 128
+collision_mask = 2
+script = ExtResource("1_np454")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=632779754]
+shape = SubResource("CircleShape2D_6cx5e")

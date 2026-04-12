@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://cfrrb2f2dbpg1"]
 
-[ext_resource type="Script" uid="uid://q478mkobfukm" path="res://orbit_ball.gd" id="1_xvgcj"]
+[ext_resource type="Script" uid="uid://q478mkobfukm" path="res://scripts/orbit_ball.gd" id="1_xvgcj"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_i5t2e"]
 

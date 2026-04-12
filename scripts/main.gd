@@ -20,14 +20,21 @@ var bullet_scene: PackedScene = preload("res://scenes/bullet.tscn")
 var exp_pickup_scene: PackedScene = preload("res://scenes/exp_pickup.tscn")
 var orbit_ball_scene: PackedScene = preload("res://scenes/orbit_ball.tscn")
 var lightning_scene: PackedScene = preload("res://scenes/lightning.tscn")
+var missile_scene := load("res://scenes/missile.tscn") as PackedScene
 
 var game_over: bool = false
 var survival_time: float = 0.0
-var rng := RandomNumberGenerator.new()
+var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+
+const BULLET_MAX_LEVEL: int = 8
+const ORBIT_BALL_MAX_LEVEL: int = 5
+const LIGHTNING_MAX_LEVEL: int = 5
+const MISSILE_MAX_LEVEL: int = 5
 
 var bullet_level: int = 1
 var orbit_ball_level: int = 0
 var lightning_level: int = 0
+var missile_level: int = 0
 
 var orbit_ball_cooldown: float = 99999.0
 var orbit_ball_duration: float = 0.0
@@ -40,7 +47,13 @@ var lightning_strike_count: int = 0
 var lightning_damage: int = 0
 var lightning_timer: float = 0.0
 
-var level_up_choices: Array = []
+var missile_cooldown: float = 99999.0
+var missile_damage: int = 0
+var missile_speed: float = 0.0
+var missile_turn_speed: float = 0.0
+var missile_timer: float = 0.0
+
+var level_up_choices: Array[Dictionary] = []
 
 const GRID_SIZE: float = 128.0
 const GRID_HALF_WIDTH: float = 2200.0
@@ -61,9 +74,9 @@ func _ready() -> void:
 	spawn_timer.timeout.connect(_on_spawn_timer_timeout)
 	restart_button.pressed.connect(_on_restart_button_pressed)
 
-	choice_button_1.pressed.connect(func(): _on_level_up_choice_pressed(0))
-	choice_button_2.pressed.connect(func(): _on_level_up_choice_pressed(1))
-	choice_button_3.pressed.connect(func(): _on_level_up_choice_pressed(2))
+	choice_button_1.pressed.connect(func() -> void: _on_level_up_choice_pressed(0))
+	choice_button_2.pressed.connect(func() -> void: _on_level_up_choice_pressed(1))
+	choice_button_3.pressed.connect(func() -> void: _on_level_up_choice_pressed(2))
 
 	game_over_label.visible = false
 	restart_button.visible = false
@@ -92,6 +105,7 @@ func _process(delta: float) -> void:
 
 	_handle_orbit_ball_weapon(delta)
 	_handle_lightning_weapon(delta)
+	_handle_missile_weapon(delta)
 
 	queue_redraw()
 
@@ -145,7 +159,7 @@ func _handle_orbit_ball_weapon(delta: float) -> void:
 
 func _spawn_orbit_balls() -> void:
 	for i in range(orbit_ball_count):
-		var orbit_ball = orbit_ball_scene.instantiate()
+		var orbit_ball: Node = orbit_ball_scene.instantiate()
 		add_child(orbit_ball)
 		orbit_ball.player = player
 		orbit_ball.lifetime = orbit_ball_duration
@@ -162,7 +176,7 @@ func _handle_lightning_weapon(delta: float) -> void:
 		_fire_lightning_weapon()
 
 func _fire_lightning_weapon() -> void:
-	var nearby_enemies: Array = _get_enemies_in_range(lightning_range)
+	var nearby_enemies: Array[Area2D] = _get_enemies_in_range(lightning_range)
 
 	if nearby_enemies.is_empty():
 		return
@@ -175,15 +189,45 @@ func _fire_lightning_weapon() -> void:
 		if enemy == null or not is_instance_valid(enemy):
 			continue
 
-		var lightning = lightning_scene.instantiate()
+		var lightning: Node = lightning_scene.instantiate()
 		add_child(lightning)
 		lightning.global_position = enemy.global_position
 
 		if enemy.has_method("take_damage"):
 			enemy.take_damage(lightning_damage)
 
-func _get_enemies_in_range(range_limit: float) -> Array:
-	var enemies_in_range: Array = []
+func _handle_missile_weapon(delta: float) -> void:
+	if missile_level <= 0:
+		return
+
+	missile_timer -= delta
+
+	if missile_timer <= 0.0:
+		missile_timer = missile_cooldown
+		_fire_missile_weapon()
+
+func _fire_missile_weapon() -> void:
+	var target: Area2D = _get_nearest_enemy()
+
+	if target == null:
+		return
+
+	var missile = missile_scene.instantiate()
+	add_child(missile)
+	missile.global_position = player.global_position
+
+	var initial_direction: Vector2 = (target.global_position - player.global_position).normalized()
+	if initial_direction == Vector2.ZERO:
+		initial_direction = Vector2.RIGHT
+
+	missile.direction = initial_direction
+	missile.target = target
+	missile.speed = missile_speed
+	missile.turn_speed = missile_turn_speed
+	missile.damage = missile_damage
+
+func _get_enemies_in_range(range_limit: float) -> Array[Area2D]:
+	var enemies_in_range: Array[Area2D] = []
 
 	for child in get_children():
 		if child is Area2D and child.scene_file_path.ends_with("enemy.tscn"):
@@ -207,7 +251,7 @@ func _on_spawn_timer_timeout() -> void:
 	if game_over:
 		return
 
-	var enemy = enemy_scene.instantiate()
+	var enemy: Node = enemy_scene.instantiate()
 	add_child(enemy)
 
 	enemy.player = player
@@ -219,11 +263,11 @@ func _on_player_shoot_requested(spawn_position: Vector2) -> void:
 	if game_over:
 		return
 
-	var target = _get_nearest_enemy()
+	var target: Area2D = _get_nearest_enemy()
 	if target == null:
 		return
 
-	var bullet = bullet_scene.instantiate()
+	var bullet: Node = bullet_scene.instantiate()
 	add_child(bullet)
 	bullet.global_position = spawn_position
 	bullet.direction = (target.global_position - spawn_position).normalized()
@@ -238,7 +282,7 @@ func _spawn_exp_pickup(enemy_position: Vector2, exp_amount: int) -> void:
 	if game_over:
 		return
 
-	var exp_pickup = exp_pickup_scene.instantiate()
+	var exp_pickup: Node = exp_pickup_scene.instantiate()
 	add_child(exp_pickup)
 	exp_pickup.global_position = enemy_position
 	exp_pickup.setup(player, exp_amount)
@@ -277,37 +321,57 @@ func _close_level_up_menu() -> void:
 	level_up_panel.visible = false
 	get_tree().paused = false
 
-func _build_level_up_choices() -> Array:
-	var choices: Array = []
+func _build_level_up_choices() -> Array[Dictionary]:
+	var pool: Array[Dictionary] = []
 
-	choices.append({
-		"id": "bullet_upgrade",
-		"text": "Upgrade Bullet\nFire faster"
-	})
+	if bullet_level < BULLET_MAX_LEVEL:
+		pool.append({
+			"id": "bullet_upgrade",
+			"text": "Upgrade Bullet\nFire faster"
+		})
 
 	if orbit_ball_level == 0:
-		choices.append({
+		pool.append({
 			"id": "unlock_orbit_ball",
 			"text": "Unlock Orbit Ball\nA spinning projectile circles you"
 		})
-	else:
-		choices.append({
+	elif orbit_ball_level < ORBIT_BALL_MAX_LEVEL:
+		pool.append({
 			"id": "orbit_upgrade",
-			"text": "Upgrade Orbit Ball\nSpawn more often and later add another ball"
+			"text": "Upgrade Orbit Ball\nSpawn more often and last longer"
 		})
 
 	if lightning_level == 0:
-		choices.append({
+		pool.append({
 			"id": "unlock_lightning",
 			"text": "Unlock Lightning\nStrikes nearby enemies automatically"
 		})
-	else:
-		choices.append({
+	elif lightning_level < LIGHTNING_MAX_LEVEL:
+		pool.append({
 			"id": "lightning_upgrade",
-			"text": "Upgrade Lightning\nMore strikes, more range, more damage"
+			"text": "Upgrade Lightning\nMore strikes, range, and damage"
 		})
 
-	return choices
+	if missile_level == 0:
+		pool.append({
+			"id": "unlock_missile",
+			"text": "Unlock Homing Missile\nTracks enemies and hits hard"
+		})
+	elif missile_level < MISSILE_MAX_LEVEL:
+		pool.append({
+			"id": "missile_upgrade",
+			"text": "Upgrade Homing Missile\nFaster reload, more damage, better tracking"
+		})
+
+	pool.shuffle()
+
+	var result: Array[Dictionary] = []
+	var max_choices: int = min(3, pool.size())
+
+	for i in range(max_choices):
+		result.append(pool[i])
+
+	return result
 
 func _set_choice_button(button: Button, index: int) -> void:
 	if index >= level_up_choices.size():
@@ -317,13 +381,14 @@ func _set_choice_button(button: Button, index: int) -> void:
 
 	button.visible = true
 	button.disabled = false
-	button.text = level_up_choices[index]["text"]
+	button.text = str(level_up_choices[index]["text"])
 
 func _on_level_up_choice_pressed(index: int) -> void:
 	if index >= level_up_choices.size():
 		return
 
-	var choice_id: String = level_up_choices[index]["id"]
+	var choice: Dictionary = level_up_choices[index]
+	var choice_id: String = str(choice["id"])
 
 	match choice_id:
 		"bullet_upgrade":
@@ -343,6 +408,13 @@ func _on_level_up_choice_pressed(index: int) -> void:
 		"lightning_upgrade":
 			lightning_level += 1
 			_apply_lightning_upgrade_stats()
+		"unlock_missile":
+			missile_level = 1
+			_apply_missile_upgrade_stats()
+			missile_timer = 0.1
+		"missile_upgrade":
+			missile_level += 1
+			_apply_missile_upgrade_stats()
 
 	_close_level_up_menu()
 
@@ -416,12 +488,43 @@ func _apply_lightning_upgrade_stats() -> void:
 			lightning_strike_count = 3
 			lightning_damage = 4
 
+func _apply_missile_upgrade_stats() -> void:
+	match missile_level:
+		1:
+			missile_cooldown = 2.4
+			missile_damage = 3
+			missile_speed = 320.0
+			missile_turn_speed = 5.0
+		2:
+			missile_cooldown = 2.0
+			missile_damage = 4
+			missile_speed = 340.0
+			missile_turn_speed = 5.8
+		3:
+			missile_cooldown = 1.7
+			missile_damage = 5
+			missile_speed = 360.0
+			missile_turn_speed = 6.5
+		4:
+			missile_cooldown = 1.45
+			missile_damage = 6
+			missile_speed = 390.0
+			missile_turn_speed = 7.2
+		_:
+			missile_cooldown = 1.2
+			missile_damage = 7
+			missile_speed = 420.0
+			missile_turn_speed = 8.0
+
 func _get_nearest_enemy() -> Area2D:
 	var nearest: Area2D = null
 	var nearest_distance: float = INF
 
 	for child in get_children():
 		if child is Area2D and child.scene_file_path.ends_with("enemy.tscn"):
+			if not is_instance_valid(child):
+				continue
+
 			var distance: float = player.global_position.distance_to(child.global_position)
 			if distance < nearest_distance:
 				nearest_distance = distance
