@@ -53,9 +53,10 @@ func _explode() -> void:
 	exploded = true
 	explosion_timer = 0.0
 
-	# Stop interacting after explosion begins
-	monitoring = false
-	monitorable = false
+	# These must be deferred because _explode can be called from area_entered,
+	# and Godot blocks collision state changes during in/out signal processing.
+	set_deferred("monitoring", false)
+	set_deferred("monitorable", false)
 
 	var collision_shape: CollisionShape2D = $CollisionShape2D
 	if collision_shape != null:
@@ -102,7 +103,6 @@ func _update_explosion_visual(delta: float) -> void:
 	progress = clamp(progress, 0.0, 1.0)
 
 	# Makes the circle shrink and grow during the brief explosion effect.
-	# This oscillates smoothly, then fades out at the end.
 	var pulse: float = sin(progress * PI * 2.0)
 	var scale_amount: float = 1.0 + (pulse * 0.18)
 
@@ -115,17 +115,14 @@ func _update_explosion_visual(delta: float) -> void:
 
 func _draw() -> void:
 	if exploded:
-		# Fade out near the end
 		var alpha_progress: float = 1.0 - clamp(explosion_timer / explosion_visual_duration, 0.0, 1.0)
 
-		# Outer translucent red explosion area
 		draw_circle(
 			Vector2.ZERO,
 			current_explosion_draw_radius,
 			Color(1.0, 0.1, 0.1, 0.22 * alpha_progress)
 		)
 
-		# Bright red outline to clearly show range
 		draw_arc(
 			Vector2.ZERO,
 			current_explosion_draw_radius,
@@ -136,7 +133,6 @@ func _draw() -> void:
 			3.0
 		)
 
-		# Small red center dot
 		draw_circle(
 			Vector2.ZERO,
 			5.0,

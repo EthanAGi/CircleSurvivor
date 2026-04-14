@@ -5,12 +5,13 @@ extends Area2D
 @export var damage: int = 1
 
 var direction: Vector2 = Vector2.RIGHT
+var has_hit: bool = false
 
 func _ready() -> void:
-	area_entered.connect(_on_area_entered)
+	body_entered.connect(_on_body_entered)
 
-	var timer := get_tree().create_timer(lifetime)
-	timer.timeout.connect(queue_free)
+	var timer: SceneTreeTimer = get_tree().create_timer(lifetime)
+	timer.timeout.connect(_on_lifetime_timeout)
 
 	queue_redraw()
 
@@ -19,13 +20,24 @@ func _process(delta: float) -> void:
 	rotation = direction.angle()
 	queue_redraw()
 
-func _on_area_entered(area: Area2D) -> void:
-	if area.has_method("take_damage"):
-		area.take_damage(damage)
+func _on_body_entered(body: Node) -> void:
+	if has_hit:
+		return
+
+	has_hit = true
+
+	if body.has_method("take_damage"):
+		body.take_damage(damage)
+
+	queue_free()
+
+func _on_lifetime_timeout() -> void:
 	queue_free()
 
 func stop() -> void:
 	set_process(false)
+	set_deferred("monitoring", false)
+	set_deferred("monitorable", false)
 
 func _draw() -> void:
 	draw_circle(Vector2.ZERO, 7.0, Color(1.0, 0.45, 0.1))

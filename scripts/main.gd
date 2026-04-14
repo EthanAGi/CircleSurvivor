@@ -65,6 +65,20 @@ const GRID_HALF_HEIGHT: float = 1400.0
 const BG_COLOR: Color = Color(0.08, 0.08, 0.1)
 const GRID_COLOR: Color = Color(0.18, 0.18, 0.22)
 
+# =========================
+# Difficulty / spawn pacing
+# =========================
+const CALM_DURATION: float = 10.0
+const RAMP_DURATION: float = 8.0
+const SWARM_DURATION: float = 7.0
+const RECOVERY_DURATION: float = 5.0
+const SPAWN_CYCLE_LENGTH: float = CALM_DURATION + RAMP_DURATION + SWARM_DURATION + RECOVERY_DURATION
+
+const BASE_MAX_ENEMIES: int = 18
+const MAX_EXTRA_ENEMIES_OVER_TIME: int = 16
+
+var enemies_per_spawn: int = 1
+
 func _ready() -> void:
 	rng.randomize()
 
@@ -114,7 +128,7 @@ func _process(delta: float) -> void:
 
 	time_label.text = "Time: %.1f" % survival_time
 
-	spawn_timer.wait_time = max(0.25, 1.0 - survival_time * 0.02)
+	_update_spawn_difficulty()
 
 	_handle_orbit_ball_weapon(delta)
 	_handle_lightning_weapon(delta)
@@ -159,6 +173,48 @@ func _setup_camera() -> void:
 	camera.enabled = true
 	camera.position = Vector2.ZERO
 	player.add_child(camera)
+
+func _update_spawn_difficulty() -> void:
+	var cycle_time: float = fmod(survival_time, SPAWN_CYCLE_LENGTH)
+
+	# This slowly increases the overall difficulty as time goes on.
+	var time_progress: float = clamp(survival_time / win_time, 0.0, 1.0)
+
+	var current_wait_time: float = 1.0
+	var current_enemies_per_spawn: int = 1
+
+	if cycle_time < CALM_DURATION:
+		# Calm phase: fewer enemies
+		current_wait_time = lerp(1.10, 0.75, time_progress)
+		current_enemies_per_spawn = 1
+
+	elif cycle_time < CALM_DURATION + RAMP_DURATION:
+		# Ramp phase: getting busier
+		var t: float = (cycle_time - CALM_DURATION) / RAMP_DURATION
+		current_wait_time = lerp(0.75, 0.40, t)
+		current_wait_time = max(0.22, current_wait_time - time_progress * 0.08)
+
+		if t < 0.5:
+			current_enemies_per_spawn = 1
+		else:
+			current_enemies_per_spawn = 2
+
+	elif cycle_time < CALM_DURATION + RAMP_DURATION + SWARM_DURATION:
+		# Swarm phase: intense pressure
+		current_wait_time = lerp(0.35, 0.20, time_progress)
+		current_enemies_per_spawn = 2
+
+		# Later in the run, swarms can occasionally hit 3 at once
+		if survival_time > 75.0 and rng.randf() < 0.18:
+			current_enemies_per_spawn = 3
+
+	else:
+		# Recovery phase: still dangerous, but not max pressure
+		current_wait_time = lerp(0.85, 0.55, time_progress)
+		current_enemies_per_spawn = 1
+
+	spawn_timer.wait_time = current_wait_time
+	enemies_per_spawn = current_enemies_per_spawn
 
 func _handle_orbit_ball_weapon(delta: float) -> void:
 	if orbit_ball_level <= 0:
@@ -264,6 +320,18 @@ func _on_spawn_timer_timeout() -> void:
 	if game_over:
 		return
 
+	var active_enemy_count: int = _get_active_enemy_count()
+	var max_enemies: int = _get_current_max_enemies()
+
+	if active_enemy_count >= max_enemies:
+		return
+
+	var spawn_count: int = min(enemies_per_spawn, max_enemies - active_enemy_count)
+
+	for i in range(spawn_count):
+		_spawn_enemy()
+
+func _spawn_enemy() -> void:
 	var enemy: Area2D = enemy_scene.instantiate()
 	add_child(enemy)
 
@@ -274,6 +342,20 @@ func _on_spawn_timer_timeout() -> void:
 
 	enemy.body_entered.connect(_on_enemy_body_entered.bind(enemy))
 	enemy.died.connect(_on_enemy_died)
+
+func _get_active_enemy_count() -> int:
+	var count: int = 0
+
+	for child in get_children():
+		if child is Area2D and child.scene_file_path.ends_with("enemy.tscn"):
+			if is_instance_valid(child):
+				count += 1
+
+	return count
+
+func _get_current_max_enemies() -> int:
+	var time_progress: float = clamp(survival_time / win_time, 0.0, 1.0)
+	return BASE_MAX_ENEMIES + int(round(MAX_EXTRA_ENEMIES_OVER_TIME * time_progress))
 
 func _roll_enemy_type_for_current_time() -> int:
 	var roll: float = rng.randf()
