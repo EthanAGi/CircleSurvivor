@@ -6,9 +6,16 @@ extends Area2D
 @export var lifetime: float = 4.0
 @export var explosion_radius: float = 70.0
 
+# How long the explosion indicator stays visible
+@export var explosion_visual_duration: float = 0.30
+
 var direction: Vector2 = Vector2.RIGHT
 var target: Area2D = null
 var exploded: bool = false
+
+# Explosion animation tracking
+var explosion_timer: float = 0.0
+var current_explosion_draw_radius: float = 0.0
 
 func _ready() -> void:
 	area_entered.connect(_on_area_entered)
@@ -20,6 +27,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	if exploded:
+		_update_explosion_visual(delta)
 		return
 
 	if target != null and is_instance_valid(target):
@@ -43,7 +51,17 @@ func _explode() -> void:
 		return
 
 	exploded = true
+	explosion_timer = 0.0
 
+	# Stop interacting after explosion begins
+	monitoring = false
+	monitorable = false
+
+	var collision_shape: CollisionShape2D = $CollisionShape2D
+	if collision_shape != null:
+		collision_shape.set_deferred("disabled", true)
+
+	# Damage enemies currently overlapping
 	var areas: Array[Area2D] = get_overlapping_areas()
 	for area in areas:
 		if area == self:
@@ -51,6 +69,7 @@ func _explode() -> void:
 		if area.has_method("take_damage"):
 			area.take_damage(damage)
 
+	# Damage everything inside explosion radius
 	var state: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
 	var params: PhysicsShapeQueryParameters2D = PhysicsShapeQueryParameters2D.new()
 
@@ -72,9 +91,60 @@ func _explode() -> void:
 		if collider != null and collider.has_method("take_damage"):
 			collider.take_damage(damage)
 
-	queue_free()
+	# Start the visual at the full AoE radius
+	current_explosion_draw_radius = explosion_radius
+	queue_redraw()
+
+func _update_explosion_visual(delta: float) -> void:
+	explosion_timer += delta
+
+	var progress: float = explosion_timer / explosion_visual_duration
+	progress = clamp(progress, 0.0, 1.0)
+
+	# Makes the circle shrink and grow during the brief explosion effect.
+	# This oscillates smoothly, then fades out at the end.
+	var pulse: float = sin(progress * PI * 2.0)
+	var scale_amount: float = 1.0 + (pulse * 0.18)
+
+	current_explosion_draw_radius = explosion_radius * scale_amount
+
+	queue_redraw()
+
+	if explosion_timer >= explosion_visual_duration:
+		queue_free()
 
 func _draw() -> void:
+	if exploded:
+		# Fade out near the end
+		var alpha_progress: float = 1.0 - clamp(explosion_timer / explosion_visual_duration, 0.0, 1.0)
+
+		# Outer translucent red explosion area
+		draw_circle(
+			Vector2.ZERO,
+			current_explosion_draw_radius,
+			Color(1.0, 0.1, 0.1, 0.22 * alpha_progress)
+		)
+
+		# Bright red outline to clearly show range
+		draw_arc(
+			Vector2.ZERO,
+			current_explosion_draw_radius,
+			0.0,
+			TAU,
+			64,
+			Color(1.0, 0.0, 0.0, 0.95 * alpha_progress),
+			3.0
+		)
+
+		# Small red center dot
+		draw_circle(
+			Vector2.ZERO,
+			5.0,
+			Color(1.0, 0.0, 0.0, 1.0 * alpha_progress)
+		)
+
+		return
+
 	var points: PackedVector2Array = PackedVector2Array([
 		Vector2(14, 0),
 		Vector2(-10, 8),
