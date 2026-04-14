@@ -1,6 +1,6 @@
 extends Area2D
 
-signal died(enemy_position: Vector2, exp_amount: int)
+signal died(enemy_position: Vector2, exp_amount: int, enemy_type: int)
 
 enum EnemyType {
 	BASIC,
@@ -154,7 +154,7 @@ func die() -> void:
 		return
 
 	is_dead = true
-	died.emit(global_position, exp_drop_amount)
+	died.emit(global_position, exp_drop_amount, enemy_type)
 	queue_free()
 
 func _draw() -> void:
@@ -218,7 +218,6 @@ func _draw_ranged() -> void:
 	draw_colored_polygon(points, color)
 	draw_circle(Vector2.ZERO, 4.0, Color(0.0, 0.35, 0.15))
 
-	# Show its preferred attack radius a little
 	draw_arc(
 		Vector2.ZERO,
 		24.0,

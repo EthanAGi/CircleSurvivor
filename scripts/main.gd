@@ -35,7 +35,6 @@ const ORBIT_BALL_MAX_LEVEL: int = 5
 const LIGHTNING_MAX_LEVEL: int = 5
 const MISSILE_MAX_LEVEL: int = 5
 
-# New stat-upgrade limits
 const MAX_HEALTH_UPGRADES: int = 8
 const MAX_ARMOR_UPGRADES: int = 5
 const MAX_SPEED_UPGRADES: int = 6
@@ -47,7 +46,6 @@ var orbit_ball_level: int = 0
 var lightning_level: int = 0
 var missile_level: int = 0
 
-# New stat-upgrade counters
 var max_health_upgrade_count: int = 0
 var armor_upgrade_count: int = 0
 var speed_upgrade_count: int = 0
@@ -406,21 +404,40 @@ func _on_player_shoot_requested(spawn_position: Vector2) -> void:
 	bullet.global_position = spawn_position
 	bullet.direction = (target.global_position - spawn_position).normalized()
 
-func _on_enemy_died(enemy_position: Vector2, exp_amount: int) -> void:
+func _on_enemy_died(enemy_position: Vector2, exp_amount: int, enemy_type: int) -> void:
 	if game_over:
 		return
 
-	call_deferred("_spawn_exp_pickup", enemy_position, exp_amount)
+	call_deferred("_spawn_exp_pickup", enemy_position, exp_amount, enemy_type)
 
-func _spawn_exp_pickup(enemy_position: Vector2, exp_amount: int) -> void:
+func _spawn_exp_pickup(enemy_position: Vector2, exp_amount: int, enemy_type: int) -> void:
 	if game_over:
 		return
+
+	var exp_type: int = _get_exp_type_from_enemy_type(enemy_type, exp_amount)
 
 	var exp_pickup: Node = exp_pickup_scene.instantiate()
 	add_child(exp_pickup)
 	exp_pickup.global_position = enemy_position
-	exp_pickup.setup(player, exp_amount)
+	exp_pickup.setup(player, exp_type)
 	exp_pickup.collected.connect(_on_exp_collected)
+
+func _get_exp_type_from_enemy_type(enemy_type: int, exp_amount: int) -> int:
+	match enemy_type:
+		0: # BASIC
+			return 0 # GREEN
+		1: # FAST
+			return 1 # BLUE
+		2: # TANK
+			return 2 # PURPLE
+		3: # RANGED
+			return 1 # BLUE
+
+	if exp_amount >= 3:
+		return 2
+	elif exp_amount == 2:
+		return 1
+	return 0
 
 func _on_exp_collected(amount: int) -> void:
 	if game_over:
@@ -497,7 +514,6 @@ func _build_level_up_choices() -> Array[Dictionary]:
 			"text": "Upgrade Homing Missile\nFaster reload, more damage, better tracking"
 		})
 
-	# New stat upgrades
 	if max_health_upgrade_count < MAX_HEALTH_UPGRADES:
 		pool.append({
 			"id": "max_health_upgrade",
