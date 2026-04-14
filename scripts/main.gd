@@ -35,10 +35,24 @@ const ORBIT_BALL_MAX_LEVEL: int = 5
 const LIGHTNING_MAX_LEVEL: int = 5
 const MISSILE_MAX_LEVEL: int = 5
 
+# New stat-upgrade limits
+const MAX_HEALTH_UPGRADES: int = 8
+const MAX_ARMOR_UPGRADES: int = 5
+const MAX_SPEED_UPGRADES: int = 6
+const MAX_FIRE_RATE_UPGRADES: int = 6
+const MAX_PICKUP_RADIUS_UPGRADES: int = 6
+
 var bullet_level: int = 1
 var orbit_ball_level: int = 0
 var lightning_level: int = 0
 var missile_level: int = 0
+
+# New stat-upgrade counters
+var max_health_upgrade_count: int = 0
+var armor_upgrade_count: int = 0
+var speed_upgrade_count: int = 0
+var fire_rate_upgrade_count: int = 0
+var pickup_radius_upgrade_count: int = 0
 
 var orbit_ball_cooldown: float = 99999.0
 var orbit_ball_duration: float = 0.0
@@ -65,9 +79,6 @@ const GRID_HALF_HEIGHT: float = 1400.0
 const BG_COLOR: Color = Color(0.08, 0.08, 0.1)
 const GRID_COLOR: Color = Color(0.18, 0.18, 0.22)
 
-# =========================
-# Difficulty / spawn pacing
-# =========================
 const CALM_DURATION: float = 10.0
 const RAMP_DURATION: float = 8.0
 const SWARM_DURATION: float = 7.0
@@ -176,20 +187,16 @@ func _setup_camera() -> void:
 
 func _update_spawn_difficulty() -> void:
 	var cycle_time: float = fmod(survival_time, SPAWN_CYCLE_LENGTH)
-
-	# This slowly increases the overall difficulty as time goes on.
 	var time_progress: float = clamp(survival_time / win_time, 0.0, 1.0)
 
 	var current_wait_time: float = 1.0
 	var current_enemies_per_spawn: int = 1
 
 	if cycle_time < CALM_DURATION:
-		# Calm phase: fewer enemies
 		current_wait_time = lerp(1.10, 0.75, time_progress)
 		current_enemies_per_spawn = 1
 
 	elif cycle_time < CALM_DURATION + RAMP_DURATION:
-		# Ramp phase: getting busier
 		var t: float = (cycle_time - CALM_DURATION) / RAMP_DURATION
 		current_wait_time = lerp(0.75, 0.40, t)
 		current_wait_time = max(0.22, current_wait_time - time_progress * 0.08)
@@ -200,16 +207,13 @@ func _update_spawn_difficulty() -> void:
 			current_enemies_per_spawn = 2
 
 	elif cycle_time < CALM_DURATION + RAMP_DURATION + SWARM_DURATION:
-		# Swarm phase: intense pressure
 		current_wait_time = lerp(0.35, 0.20, time_progress)
 		current_enemies_per_spawn = 2
 
-		# Later in the run, swarms can occasionally hit 3 at once
 		if survival_time > 75.0 and rng.randf() < 0.18:
 			current_enemies_per_spawn = 3
 
 	else:
-		# Recovery phase: still dangerous, but not max pressure
 		current_wait_time = lerp(0.85, 0.55, time_progress)
 		current_enemies_per_spawn = 1
 
@@ -360,38 +364,34 @@ func _get_current_max_enemies() -> int:
 func _roll_enemy_type_for_current_time() -> int:
 	var roll: float = rng.randf()
 
-	# Early game: mostly basic, a few fast
 	if survival_time < 25.0:
 		if roll < 0.80:
-			return 0 # BASIC
-		return 1 # FAST
+			return 0
+		return 1
 
-	# Mid game: introduce tank
 	if survival_time < 55.0:
 		if roll < 0.50:
-			return 0 # BASIC
+			return 0
 		elif roll < 0.75:
-			return 1 # FAST
-		return 2 # TANK
+			return 1
+		return 2
 
-	# Later: introduce ranged
 	if survival_time < 90.0:
 		if roll < 0.35:
-			return 0 # BASIC
+			return 0
 		elif roll < 0.58:
-			return 1 # FAST
+			return 1
 		elif roll < 0.82:
-			return 2 # TANK
-		return 3 # RANGED
+			return 2
+		return 3
 
-	# Endgame mix
 	if roll < 0.22:
-		return 0 # BASIC
+		return 0
 	elif roll < 0.46:
-		return 1 # FAST
+		return 1
 	elif roll < 0.72:
-		return 2 # TANK
-	return 3 # RANGED
+		return 2
+	return 3
 
 func _on_player_shoot_requested(spawn_position: Vector2) -> void:
 	if game_over:
@@ -497,6 +497,37 @@ func _build_level_up_choices() -> Array[Dictionary]:
 			"text": "Upgrade Homing Missile\nFaster reload, more damage, better tracking"
 		})
 
+	# New stat upgrades
+	if max_health_upgrade_count < MAX_HEALTH_UPGRADES:
+		pool.append({
+			"id": "max_health_upgrade",
+			"text": "Max Health Up\n+1 max HP and heal 1"
+		})
+
+	if armor_upgrade_count < MAX_ARMOR_UPGRADES:
+		pool.append({
+			"id": "armor_upgrade",
+			"text": "Armor Up\nTake 1 less damage"
+		})
+
+	if speed_upgrade_count < MAX_SPEED_UPGRADES:
+		pool.append({
+			"id": "speed_upgrade",
+			"text": "Move Speed Up\nMove faster"
+		})
+
+	if fire_rate_upgrade_count < MAX_FIRE_RATE_UPGRADES:
+		pool.append({
+			"id": "fire_rate_upgrade",
+			"text": "Attack Speed Up\nShoot faster"
+		})
+
+	if pickup_radius_upgrade_count < MAX_PICKUP_RADIUS_UPGRADES:
+		pool.append({
+			"id": "pickup_radius_upgrade",
+			"text": "Pickup Radius Up\nCollect EXP from farther away"
+		})
+
 	pool.shuffle()
 
 	var result: Array[Dictionary] = []
@@ -528,27 +559,53 @@ func _on_level_up_choice_pressed(index: int) -> void:
 		"bullet_upgrade":
 			bullet_level += 1
 			_apply_bullet_upgrade_stats()
+
 		"unlock_orbit_ball":
 			orbit_ball_level = 1
 			_apply_orbit_ball_upgrade_stats()
 			orbit_ball_timer = 0.1
+
 		"orbit_upgrade":
 			orbit_ball_level += 1
 			_apply_orbit_ball_upgrade_stats()
+
 		"unlock_lightning":
 			lightning_level = 1
 			_apply_lightning_upgrade_stats()
 			lightning_timer = 0.1
+
 		"lightning_upgrade":
 			lightning_level += 1
 			_apply_lightning_upgrade_stats()
+
 		"unlock_missile":
 			missile_level = 1
 			_apply_missile_upgrade_stats()
 			missile_timer = 0.1
+
 		"missile_upgrade":
 			missile_level += 1
 			_apply_missile_upgrade_stats()
+
+		"max_health_upgrade":
+			max_health_upgrade_count += 1
+			player.increase_max_health(1)
+
+		"armor_upgrade":
+			armor_upgrade_count += 1
+			player.increase_armor(1)
+
+		"speed_upgrade":
+			speed_upgrade_count += 1
+			player.increase_speed(25.0)
+
+		"fire_rate_upgrade":
+			fire_rate_upgrade_count += 1
+			player.improve_fire_rate(0.10)
+
+		"pickup_radius_upgrade":
+			pickup_radius_upgrade_count += 1
+			player.increase_pickup_radius(0.20)
 
 	_close_level_up_menu()
 

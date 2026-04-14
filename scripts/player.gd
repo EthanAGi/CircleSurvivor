@@ -14,6 +14,10 @@ signal health_changed(current_health: int, max_health: int)
 @export var max_health: int = 5
 @export var contact_invulnerability_time: float = 0.75
 
+# New player stats
+@export var armor: int = 0
+@export var pickup_radius_multiplier: float = 1.0
+
 @onready var fire_timer: Timer = $FireTimer
 
 var is_dead: bool = false
@@ -26,6 +30,10 @@ var current_health: int = 0
 var can_take_damage: bool = true
 var damage_invulnerability_timer: float = 0.0
 
+# Fire-rate stacking support
+var base_fire_rate_wait_time: float = 0.5
+var fire_rate_multiplier: float = 1.0
+
 func _ready() -> void:
 	level = starting_level
 	current_exp = 0
@@ -35,7 +43,10 @@ func _ready() -> void:
 	can_take_damage = true
 	damage_invulnerability_timer = 0.0
 
+	base_fire_rate_wait_time = fire_timer.wait_time
+
 	fire_timer.timeout.connect(_on_fire_timer_timeout)
+	_update_fire_timer()
 
 	exp_changed.emit(level, current_exp, exp_to_next)
 	health_changed.emit(current_health, max_health)
@@ -79,10 +90,8 @@ func gain_experience(amount: int) -> void:
 	exp_changed.emit(level, current_exp, exp_to_next)
 
 func set_fire_rate(new_wait_time: float) -> void:
-	fire_timer.wait_time = new_wait_time
-
-	if not is_dead:
-		fire_timer.start()
+	base_fire_rate_wait_time = new_wait_time
+	_update_fire_timer()
 
 func take_damage(amount: int = 1) -> void:
 	if is_dead:
@@ -91,7 +100,9 @@ func take_damage(amount: int = 1) -> void:
 	if not can_take_damage:
 		return
 
-	current_health -= amount
+	var final_damage: int = max(1, amount - armor)
+
+	current_health -= final_damage
 	current_health = max(current_health, 0)
 
 	can_take_damage = false
@@ -116,8 +127,30 @@ func heal(amount: int) -> void:
 func increase_max_health(amount: int) -> void:
 	max_health += amount
 	current_health += amount
+	current_health = min(current_health, max_health)
+
 	health_changed.emit(current_health, max_health)
 	queue_redraw()
+
+func increase_armor(amount: int) -> void:
+	armor += amount
+
+func increase_speed(amount: float) -> void:
+	speed += amount
+
+func improve_fire_rate(multiplier_reduction: float) -> void:
+	fire_rate_multiplier = max(0.40, fire_rate_multiplier - multiplier_reduction)
+	_update_fire_timer()
+
+func increase_pickup_radius(amount: float) -> void:
+	pickup_radius_multiplier += amount
+
+func _update_fire_timer() -> void:
+	var final_wait_time: float = max(0.08, base_fire_rate_wait_time * fire_rate_multiplier)
+	fire_timer.wait_time = final_wait_time
+
+	if not is_dead:
+		fire_timer.start()
 
 func die() -> void:
 	if is_dead:
@@ -159,21 +192,18 @@ func _draw_health_bar() -> void:
 
 	var bar_position := Vector2(-bar_width / 2.0, bar_y)
 
-	# Background
 	draw_rect(
 		Rect2(bar_position, Vector2(bar_width, bar_height)),
 		Color(0.18, 0.18, 0.18, 0.95),
 		true
 	)
 
-	# Red health fill
 	draw_rect(
 		Rect2(bar_position, Vector2(bar_width * health_ratio, bar_height)),
 		Color(0.9, 0.1, 0.1, 1.0),
 		true
 	)
 
-	# Border
 	draw_rect(
 		Rect2(bar_position, Vector2(bar_width, bar_height)),
 		Color(0.0, 0.0, 0.0, 1.0),

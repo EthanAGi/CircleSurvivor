@@ -27,7 +27,11 @@ func _process(delta: float) -> void:
 	var to_player: Vector2 = player.global_position - global_position
 	var distance: float = to_player.length()
 
-	if not is_collecting and distance <= attract_radius:
+	var effective_attract_radius: float = attract_radius
+	if "pickup_radius_multiplier" in player:
+		effective_attract_radius *= player.pickup_radius_multiplier
+
+	if not is_collecting and distance <= effective_attract_radius:
 		is_collecting = true
 
 	if is_collecting:
