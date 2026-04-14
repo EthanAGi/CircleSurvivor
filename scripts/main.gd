@@ -23,8 +23,11 @@ var lightning_scene: PackedScene = preload("res://scenes/lightning.tscn")
 var missile_scene := load("res://scenes/missile.tscn") as PackedScene
 
 var game_over: bool = false
+var game_won: bool = false
 var survival_time: float = 0.0
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+
+@export var win_time: float = 180.0
 
 const BULLET_MAX_LEVEL: int = 8
 const ORBIT_BALL_MAX_LEVEL: int = 5
@@ -88,6 +91,7 @@ func _ready() -> void:
 
 	_apply_bullet_upgrade_stats()
 	_on_player_exp_changed(player.level, player.current_exp, player.exp_to_next)
+	time_label.text = "Time: %.1f" % survival_time
 
 func _process(delta: float) -> void:
 	if game_over:
@@ -99,6 +103,14 @@ func _process(delta: float) -> void:
 		return
 
 	survival_time += delta
+
+	if survival_time >= win_time:
+		survival_time = win_time
+		time_label.text = "Time: %.1f" % survival_time
+		_on_player_won()
+		queue_redraw()
+		return
+
 	time_label.text = "Time: %.1f" % survival_time
 
 	spawn_timer.wait_time = max(0.25, 1.0 - survival_time * 0.02)
@@ -547,8 +559,27 @@ func _on_enemy_body_entered(body: Node) -> void:
 
 func _on_player_died() -> void:
 	game_over = true
+	game_won = false
+	game_over_label.text = "GAME OVER"
 	game_over_label.visible = true
 	restart_button.visible = true
+	spawn_timer.stop()
+
+	for child in get_children():
+		if child is Area2D and child.has_method("stop"):
+			child.stop()
+
+func _on_player_won() -> void:
+	if game_over:
+		return
+
+	game_over = true
+	game_won = true
+
+	game_over_label.text = "YOU WIN"
+	game_over_label.visible = true
+	restart_button.visible = true
+
 	spawn_timer.stop()
 
 	for child in get_children():
