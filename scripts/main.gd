@@ -16,6 +16,7 @@ extends Node2D
 @onready var choice_button_3 = $UI/UIRoot/LevelUpPanel/VBoxContainer/ChoiceButton3
 
 var enemy_scene: PackedScene = preload("res://scenes/enemy.tscn")
+var enemy_projectile_scene: PackedScene = preload("res://scenes/enemy_projectile.tscn")
 var bullet_scene: PackedScene = preload("res://scenes/bullet.tscn")
 var exp_pickup_scene: PackedScene = preload("res://scenes/exp_pickup.tscn")
 var orbit_ball_scene: PackedScene = preload("res://scenes/orbit_ball.tscn")
@@ -263,13 +264,52 @@ func _on_spawn_timer_timeout() -> void:
 	if game_over:
 		return
 
-	var enemy: Node = enemy_scene.instantiate()
+	var enemy: Area2D = enemy_scene.instantiate()
 	add_child(enemy)
 
 	enemy.player = player
 	enemy.global_position = _get_spawn_position()
-	enemy.body_entered.connect(_on_enemy_body_entered)
+	enemy.projectile_scene = enemy_projectile_scene
+	enemy.enemy_type = _roll_enemy_type_for_current_time()
+
+	enemy.body_entered.connect(_on_enemy_body_entered.bind(enemy))
 	enemy.died.connect(_on_enemy_died)
+
+func _roll_enemy_type_for_current_time() -> int:
+	var roll: float = rng.randf()
+
+	# Early game: mostly basic, a few fast
+	if survival_time < 25.0:
+		if roll < 0.80:
+			return 0 # BASIC
+		return 1 # FAST
+
+	# Mid game: introduce tank
+	if survival_time < 55.0:
+		if roll < 0.50:
+			return 0 # BASIC
+		elif roll < 0.75:
+			return 1 # FAST
+		return 2 # TANK
+
+	# Later: introduce ranged
+	if survival_time < 90.0:
+		if roll < 0.35:
+			return 0 # BASIC
+		elif roll < 0.58:
+			return 1 # FAST
+		elif roll < 0.82:
+			return 2 # TANK
+		return 3 # RANGED
+
+	# Endgame mix
+	if roll < 0.22:
+		return 0 # BASIC
+	elif roll < 0.46:
+		return 1 # FAST
+	elif roll < 0.72:
+		return 2 # TANK
+	return 3 # RANGED
 
 func _on_player_shoot_requested(spawn_position: Vector2) -> void:
 	if game_over:
@@ -550,11 +590,16 @@ func _get_spawn_position() -> Vector2:
 	var offset: Vector2 = Vector2.RIGHT.rotated(angle) * distance
 	return player.global_position + offset
 
-func _on_enemy_body_entered(body: Node) -> void:
+func _on_enemy_body_entered(body: Node, enemy: Area2D) -> void:
 	if game_over:
 		return
 
-	if body == player:
+	if body != player:
+		return
+
+	if enemy != null and is_instance_valid(enemy) and enemy.has_method("get_touch_damage"):
+		player.take_damage(enemy.get_touch_damage())
+	else:
 		player.take_damage(1)
 
 func _on_player_died() -> void:
