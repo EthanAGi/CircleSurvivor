@@ -10,6 +10,28 @@ func _ready() -> void:
 	options_button.pressed.connect(_on_options_pressed)
 	exit_button.pressed.connect(_on_exit_pressed)
 
+	_setup_menu_focus()
+
+func _setup_menu_focus() -> void:
+	start_button.focus_mode = Control.FOCUS_ALL
+	options_button.focus_mode = Control.FOCUS_ALL
+	exit_button.focus_mode = Control.FOCUS_ALL
+
+	start_button.focus_neighbor_bottom = options_button.get_path()
+	start_button.focus_neighbor_top = exit_button.get_path()
+
+	options_button.focus_neighbor_top = start_button.get_path()
+	options_button.focus_neighbor_bottom = exit_button.get_path()
+
+	exit_button.focus_neighbor_top = options_button.get_path()
+	exit_button.focus_neighbor_bottom = start_button.get_path()
+
+	start_button.mouse_entered.connect(func() -> void: start_button.grab_focus())
+	options_button.mouse_entered.connect(func() -> void: options_button.grab_focus())
+	exit_button.mouse_entered.connect(func() -> void: exit_button.grab_focus())
+
+	start_button.grab_focus()
+
 func _on_start_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/character_select.tscn")
 
