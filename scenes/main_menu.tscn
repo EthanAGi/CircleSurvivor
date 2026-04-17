@@ -39,9 +39,11 @@ layout_mode = 2
 theme_override_constants/separation = 16
 
 [node name="TitleLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer" unique_id=124826144]
+z_index = 1
 layout_mode = 2
 theme_override_font_sizes/font_size = 34
 text = "Circle Survivor"
+uppercase = true
 
 [node name="StartButton" type="Button" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer" unique_id=1986746388]
 layout_mode = 2
