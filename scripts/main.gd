@@ -22,6 +22,7 @@ var exp_pickup_scene: PackedScene = preload("res://scenes/exp_pickup.tscn")
 var orbit_ball_scene: PackedScene = preload("res://scenes/orbit_ball.tscn")
 var lightning_scene: PackedScene = preload("res://scenes/lightning.tscn")
 var missile_scene := load("res://scenes/missile.tscn") as PackedScene
+var damage_number_script := load("res://scripts/damage_number.gd") as GDScript
 
 var game_over: bool = false
 var game_won: bool = false
@@ -364,6 +365,7 @@ func _spawn_enemy() -> void:
 
 	enemy.body_entered.connect(_on_enemy_body_entered.bind(enemy))
 	enemy.died.connect(_on_enemy_died)
+	enemy.damaged.connect(_on_enemy_damaged)
 
 func _get_active_enemy_count() -> int:
 	var count: int = 0
@@ -426,6 +428,21 @@ func _on_player_shoot_requested(spawn_position: Vector2) -> void:
 	bullet.speed = 500.0 * projectile_speed_multiplier
 	bullet.damage = _roll_damage(1)
 	bullet.radius = 8.0 * attack_size_multiplier
+
+func _on_enemy_damaged(damage_position: Vector2, amount: int) -> void:
+	if game_over:
+		return
+
+	_spawn_damage_number(damage_position, amount)
+
+func _spawn_damage_number(world_position: Vector2, amount: int) -> void:
+	if damage_number_script == null:
+		return
+
+	var damage_number: Node2D = damage_number_script.new()
+	damage_number.setup(amount)
+	add_child(damage_number)
+	damage_number.global_position = world_position
 
 func _on_enemy_died(enemy_position: Vector2, exp_amount: int, enemy_type: int) -> void:
 	if game_over:

@@ -1,6 +1,7 @@
 extends Area2D
 
 signal died(enemy_position: Vector2, exp_amount: int, enemy_type: int)
+signal damaged(damage_position: Vector2, amount: int)
 
 enum EnemyType {
 	BASIC,
@@ -9,7 +10,7 @@ enum EnemyType {
 	RANGED
 }
 
-@export var enemy_type: EnemyType = EnemyType.BASIC
+@export var enemy_type: int = EnemyType.BASIC
 @export var projectile_scene: PackedScene
 
 var speed: float = 120.0
@@ -140,6 +141,7 @@ func take_damage(amount: int = 1) -> void:
 		return
 
 	current_health -= amount
+	damaged.emit(global_position + Vector2(0, -18), amount)
 
 	if current_health <= 0:
 		die()
@@ -217,13 +219,3 @@ func _draw_ranged() -> void:
 
 	draw_colored_polygon(points, color)
 	draw_circle(Vector2.ZERO, 4.0, Color(0.0, 0.35, 0.15))
-
-	draw_arc(
-		Vector2.ZERO,
-		24.0,
-		0.0,
-		TAU,
-		32,
-		Color(0.2, 1.0, 0.6, 0.35),
-		2.0
-	)
