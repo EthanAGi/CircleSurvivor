@@ -41,6 +41,14 @@ const MAX_SPEED_UPGRADES: int = 6
 const MAX_FIRE_RATE_UPGRADES: int = 6
 const MAX_PICKUP_RADIUS_UPGRADES: int = 6
 
+const MAX_PROJECTILE_SPEED_UPGRADES: int = 6
+const MAX_ATTACK_SIZE_UPGRADES: int = 6
+const MAX_CRIT_CHANCE_UPGRADES: int = 6
+
+const RARITY_COMMON: String = "Common"
+const RARITY_RARE: String = "Rare"
+const RARITY_EPIC: String = "Epic"
+
 var bullet_level: int = 1
 var orbit_ball_level: int = 0
 var lightning_level: int = 0
@@ -51,6 +59,13 @@ var armor_upgrade_count: int = 0
 var speed_upgrade_count: int = 0
 var fire_rate_upgrade_count: int = 0
 var pickup_radius_upgrade_count: int = 0
+var projectile_speed_upgrade_count: int = 0
+var attack_size_upgrade_count: int = 0
+var crit_chance_upgrade_count: int = 0
+
+var projectile_speed_multiplier: float = 1.0
+var attack_size_multiplier: float = 1.0
+var crit_chance: float = 0.0
 
 var orbit_ball_cooldown: float = 99999.0
 var orbit_ball_duration: float = 0.0
@@ -235,6 +250,9 @@ func _spawn_orbit_balls() -> void:
 		orbit_ball.player = player
 		orbit_ball.lifetime = orbit_ball_duration
 		orbit_ball.angle_offset = TAU * float(i) / float(orbit_ball_count)
+		orbit_ball.ball_radius = 10.0 * attack_size_multiplier
+		orbit_ball.damage = 1
+		orbit_ball.crit_chance = crit_chance
 
 func _handle_lightning_weapon(delta: float) -> void:
 	if lightning_level <= 0:
@@ -263,9 +281,10 @@ func _fire_lightning_weapon() -> void:
 		var lightning: Node = lightning_scene.instantiate()
 		add_child(lightning)
 		lightning.global_position = enemy.global_position
+		lightning.strike_radius = 26.0 * attack_size_multiplier
 
 		if enemy.has_method("take_damage"):
-			enemy.take_damage(lightning_damage)
+			enemy.take_damage(_roll_damage(lightning_damage))
 
 func _handle_missile_weapon(delta: float) -> void:
 	if missile_level <= 0:
@@ -293,9 +312,10 @@ func _fire_missile_weapon() -> void:
 
 	missile.direction = initial_direction
 	missile.target = target
-	missile.speed = missile_speed
+	missile.speed = missile_speed * projectile_speed_multiplier
 	missile.turn_speed = missile_turn_speed
-	missile.damage = missile_damage
+	missile.damage = _roll_damage(missile_damage)
+	missile.explosion_radius = 70.0 * attack_size_multiplier
 
 func _get_enemies_in_range(range_limit: float) -> Array[Area2D]:
 	var enemies_in_range: Array[Area2D] = []
@@ -403,6 +423,9 @@ func _on_player_shoot_requested(spawn_position: Vector2) -> void:
 	add_child(bullet)
 	bullet.global_position = spawn_position
 	bullet.direction = (target.global_position - spawn_position).normalized()
+	bullet.speed = 500.0 * projectile_speed_multiplier
+	bullet.damage = _roll_damage(1)
+	bullet.radius = 8.0 * attack_size_multiplier
 
 func _on_enemy_died(enemy_position: Vector2, exp_amount: int, enemy_type: int) -> void:
 	if game_over:
@@ -424,14 +447,14 @@ func _spawn_exp_pickup(enemy_position: Vector2, exp_amount: int, enemy_type: int
 
 func _get_exp_type_from_enemy_type(enemy_type: int, exp_amount: int) -> int:
 	match enemy_type:
-		0: # BASIC
-			return 0 # GREEN
-		1: # FAST
-			return 1 # BLUE
-		2: # TANK
-			return 2 # PURPLE
-		3: # RANGED
-			return 1 # BLUE
+		0:
+			return 0
+		1:
+			return 1
+		2:
+			return 2
+		3:
+			return 1
 
 	if exp_amount >= 3:
 		return 2
@@ -527,10 +550,12 @@ func _build_level_up_choices() -> Array[Dictionary]:
 		})
 
 	if speed_upgrade_count < MAX_SPEED_UPGRADES:
-		pool.append({
-			"id": "speed_upgrade",
-			"text": "Move Speed Up\nMove faster"
-		})
+		pool.append(_make_rarity_choice(
+			"speed_upgrade",
+			"Move Speed Up",
+			"Move faster",
+			25.0
+		))
 
 	if fire_rate_upgrade_count < MAX_FIRE_RATE_UPGRADES:
 		pool.append({
@@ -544,6 +569,30 @@ func _build_level_up_choices() -> Array[Dictionary]:
 			"text": "Pickup Radius Up\nCollect EXP from farther away"
 		})
 
+	if projectile_speed_upgrade_count < MAX_PROJECTILE_SPEED_UPGRADES:
+		pool.append(_make_rarity_choice(
+			"projectile_speed_upgrade",
+			"Projectile Speed Up",
+			"Bullets and missiles travel faster",
+			0.15
+		))
+
+	if attack_size_upgrade_count < MAX_ATTACK_SIZE_UPGRADES:
+		pool.append(_make_rarity_choice(
+			"attack_size_upgrade",
+			"Attack Size Up",
+			"Bigger bullets, lightning, missiles, and orbit balls",
+			0.12
+		))
+
+	if crit_chance_upgrade_count < MAX_CRIT_CHANCE_UPGRADES:
+		pool.append(_make_rarity_choice(
+			"crit_chance_upgrade",
+			"Crit Chance Up",
+			"Chance for attacks to deal double damage",
+			0.08
+		))
+
 	pool.shuffle()
 
 	var result: Array[Dictionary] = []
@@ -554,6 +603,44 @@ func _build_level_up_choices() -> Array[Dictionary]:
 
 	return result
 
+func _make_rarity_choice(choice_id: String, title: String, description: String, amount: float) -> Dictionary:
+	var rarity: String = _roll_rarity()
+	return {
+		"id": choice_id,
+		"text": "%s %s\n%s" % [rarity, title, description],
+		"rarity": rarity,
+		"amount": amount * _get_rarity_multiplier(rarity)
+	}
+
+func _roll_rarity() -> String:
+	var roll: float = rng.randf()
+
+	if roll < 0.60:
+		return RARITY_COMMON
+	elif roll < 0.90:
+		return RARITY_RARE
+	return RARITY_EPIC
+
+func _get_rarity_multiplier(rarity: String) -> float:
+	match rarity:
+		RARITY_COMMON:
+			return 1.0
+		RARITY_RARE:
+			return 1.5
+		RARITY_EPIC:
+			return 2.0
+		_:
+			return 1.0
+
+func _get_rarity_color(rarity: String) -> Color:
+	match rarity:
+		RARITY_RARE:
+			return Color(0.70, 0.82, 1.0)
+		RARITY_EPIC:
+			return Color(0.88, 0.66, 1.0)
+		_:
+			return Color(1.0, 1.0, 1.0)
+
 func _set_choice_button(button: Button, index: int) -> void:
 	if index >= level_up_choices.size():
 		button.visible = false
@@ -563,6 +650,9 @@ func _set_choice_button(button: Button, index: int) -> void:
 	button.visible = true
 	button.disabled = false
 	button.text = str(level_up_choices[index]["text"])
+
+	var rarity: String = str(level_up_choices[index].get("rarity", ""))
+	button.modulate = _get_rarity_color(rarity)
 
 func _on_level_up_choice_pressed(index: int) -> void:
 	if index >= level_up_choices.size():
@@ -613,7 +703,7 @@ func _on_level_up_choice_pressed(index: int) -> void:
 
 		"speed_upgrade":
 			speed_upgrade_count += 1
-			player.increase_speed(25.0)
+			player.increase_speed(float(choice.get("amount", 25.0)))
 
 		"fire_rate_upgrade":
 			fire_rate_upgrade_count += 1
@@ -622,6 +712,19 @@ func _on_level_up_choice_pressed(index: int) -> void:
 		"pickup_radius_upgrade":
 			pickup_radius_upgrade_count += 1
 			player.increase_pickup_radius(0.20)
+
+		"projectile_speed_upgrade":
+			projectile_speed_upgrade_count += 1
+			projectile_speed_multiplier += float(choice.get("amount", 0.15))
+
+		"attack_size_upgrade":
+			attack_size_upgrade_count += 1
+			attack_size_multiplier += float(choice.get("amount", 0.12))
+
+		"crit_chance_upgrade":
+			crit_chance_upgrade_count += 1
+			crit_chance += float(choice.get("amount", 0.08))
+			crit_chance = min(crit_chance, 0.60)
 
 	_close_level_up_menu()
 
@@ -789,3 +892,8 @@ func _on_player_won() -> void:
 func _on_restart_button_pressed() -> void:
 	get_tree().paused = false
 	get_tree().reload_current_scene()
+
+func _roll_damage(base_damage: int) -> int:
+	if rng.randf() < crit_chance:
+		return base_damage * 2
+	return base_damage

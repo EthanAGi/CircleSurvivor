@@ -5,15 +5,12 @@ extends Area2D
 @export var damage: int = 3
 @export var lifetime: float = 4.0
 @export var explosion_radius: float = 70.0
-
-# How long the explosion indicator stays visible
 @export var explosion_visual_duration: float = 0.30
 
 var direction: Vector2 = Vector2.RIGHT
 var target: Area2D = null
 var exploded: bool = false
 
-# Explosion animation tracking
 var explosion_timer: float = 0.0
 var current_explosion_draw_radius: float = 0.0
 
@@ -53,8 +50,6 @@ func _explode() -> void:
 	exploded = true
 	explosion_timer = 0.0
 
-	# These must be deferred because _explode can be called from area_entered,
-	# and Godot blocks collision state changes during in/out signal processing.
 	set_deferred("monitoring", false)
 	set_deferred("monitorable", false)
 
@@ -62,7 +57,6 @@ func _explode() -> void:
 	if collision_shape != null:
 		collision_shape.set_deferred("disabled", true)
 
-	# Damage enemies currently overlapping
 	var areas: Array[Area2D] = get_overlapping_areas()
 	for area in areas:
 		if area == self:
@@ -70,7 +64,6 @@ func _explode() -> void:
 		if area.has_method("take_damage"):
 			area.take_damage(damage)
 
-	# Damage everything inside explosion radius
 	var state: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
 	var params: PhysicsShapeQueryParameters2D = PhysicsShapeQueryParameters2D.new()
 
@@ -92,7 +85,6 @@ func _explode() -> void:
 		if collider != null and collider.has_method("take_damage"):
 			collider.take_damage(damage)
 
-	# Start the visual at the full AoE radius
 	current_explosion_draw_radius = explosion_radius
 	queue_redraw()
 
@@ -102,7 +94,6 @@ func _update_explosion_visual(delta: float) -> void:
 	var progress: float = explosion_timer / explosion_visual_duration
 	progress = clamp(progress, 0.0, 1.0)
 
-	# Makes the circle shrink and grow during the brief explosion effect.
 	var pulse: float = sin(progress * PI * 2.0)
 	var scale_amount: float = 1.0 + (pulse * 0.18)
 

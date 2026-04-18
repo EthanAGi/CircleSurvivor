@@ -5,15 +5,23 @@ extends Area2D
 @export var damage: int = 1
 @export var lifetime: float = 2.0
 @export var hit_cooldown: float = 0.35
+@export var ball_radius: float = 10.0
 
 var player: Node2D = null
 var angle: float = 0.0
 var angle_offset: float = 0.0
+var crit_chance: float = 0.0
 
 var hit_timers := {}
 
 func _ready() -> void:
 	area_entered.connect(_on_area_entered)
+
+	var collision_shape: CollisionShape2D = $CollisionShape2D
+	if collision_shape != null and collision_shape.shape is CircleShape2D:
+		var circle_shape: CircleShape2D = collision_shape.shape as CircleShape2D
+		circle_shape.radius = ball_radius
+
 	queue_redraw()
 
 func _process(delta: float) -> void:
@@ -48,8 +56,13 @@ func _on_area_entered(area: Area2D) -> void:
 	if hit_timers.has(id):
 		return
 
-	area.take_damage(damage)
+	area.take_damage(_roll_damage(damage))
 	hit_timers[id] = hit_cooldown
 
+func _roll_damage(base_damage: int) -> int:
+	if randf() < crit_chance:
+		return base_damage * 2
+	return base_damage
+
 func _draw() -> void:
-	draw_circle(Vector2.ZERO, 10.0, Color(0.9, 0.95, 1.0))
+	draw_circle(Vector2.ZERO, ball_radius, Color(0.9, 0.95, 1.0))
