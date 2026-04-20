@@ -10,6 +10,7 @@ var damage_amount: int = 0
 var elapsed: float = 0.0
 var velocity: Vector2 = Vector2.ZERO
 var label: Label = null
+var text_color: Color = Color(1.0, 0.95, 0.35)
 
 func _ready() -> void:
 	z_index = 100
@@ -24,7 +25,7 @@ func _ready() -> void:
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	label.add_theme_font_size_override("font_size", 18)
-	label.add_theme_color_override("font_color", Color(1.0, 0.95, 0.35))
+	label.add_theme_color_override("font_color", text_color)
 	label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.95))
 	label.add_theme_constant_override("shadow_offset_x", 2)
 	label.add_theme_constant_override("shadow_offset_y", 2)
@@ -36,11 +37,13 @@ func _ready() -> void:
 	var random_x: float = randf_range(-spread_x, spread_x)
 	velocity = Vector2(random_x, -float_speed)
 
-func setup(amount: int) -> void:
+func setup(amount: int, color_override: Color = Color(1.0, 0.95, 0.35)) -> void:
 	damage_amount = amount
+	text_color = color_override
 
 	if label != null:
 		label.text = str(damage_amount)
+		label.add_theme_color_override("font_color", text_color)
 
 func _process(delta: float) -> void:
 	elapsed += delta

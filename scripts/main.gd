@@ -50,6 +50,9 @@ const RARITY_COMMON: String = "Common"
 const RARITY_RARE: String = "Rare"
 const RARITY_EPIC: String = "Epic"
 
+const ENEMY_DAMAGE_NUMBER_COLOR: Color = Color(1.0, 0.95, 0.35)
+const PLAYER_DAMAGE_NUMBER_COLOR: Color = Color(0.45, 0.95, 1.0)
+
 var bullet_level: int = 1
 var orbit_ball_level: int = 0
 var lightning_level: int = 0
@@ -113,6 +116,7 @@ func _ready() -> void:
 	player.shoot_requested.connect(_on_player_shoot_requested)
 	player.exp_changed.connect(_on_player_exp_changed)
 	player.leveled_up.connect(_on_player_leveled_up)
+	player.damaged.connect(_on_player_damaged)
 
 	spawn_timer.timeout.connect(_on_spawn_timer_timeout)
 	restart_button.pressed.connect(_on_restart_button_pressed)
@@ -433,14 +437,20 @@ func _on_enemy_damaged(damage_position: Vector2, amount: int) -> void:
 	if game_over:
 		return
 
-	_spawn_damage_number(damage_position, amount)
+	_spawn_damage_number(damage_position, amount, ENEMY_DAMAGE_NUMBER_COLOR)
 
-func _spawn_damage_number(world_position: Vector2, amount: int) -> void:
+func _on_player_damaged(damage_position: Vector2, amount: int) -> void:
+	if game_over:
+		return
+
+	_spawn_damage_number(damage_position, amount, PLAYER_DAMAGE_NUMBER_COLOR)
+
+func _spawn_damage_number(world_position: Vector2, amount: int, color: Color) -> void:
 	if damage_number_script == null:
 		return
 
 	var damage_number: Node2D = damage_number_script.new()
-	damage_number.setup(amount)
+	damage_number.setup(amount, color)
 	add_child(damage_number)
 	damage_number.global_position = world_position
 

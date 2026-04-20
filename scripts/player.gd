@@ -5,6 +5,7 @@ signal shoot_requested(position: Vector2)
 signal exp_changed(level: int, current_exp: int, exp_to_next: int)
 signal leveled_up(level: int)
 signal health_changed(current_health: int, max_health: int)
+signal damaged(damage_position: Vector2, amount: int)
 
 @export var speed: float = 250.0
 @export var starting_level: int = 1
@@ -108,6 +109,7 @@ func take_damage(amount: int = 1) -> void:
 	can_take_damage = false
 	damage_invulnerability_timer = contact_invulnerability_time
 
+	damaged.emit(global_position + Vector2(0, -34), final_damage)
 	health_changed.emit(current_health, max_health)
 	queue_redraw()
 
