@@ -15,6 +15,35 @@ extends Node2D
 @onready var choice_button_2 = $UI/UIRoot/LevelUpPanel/VBoxContainer/ChoiceButton2
 @onready var choice_button_3 = $UI/UIRoot/LevelUpPanel/VBoxContainer/ChoiceButton3
 
+# Pause menu nodes
+@onready var pause_menu: Control = _find_first_existing_node([
+	"UI/UIRoot/PauseLayer/PauseMenu"
+]) as Control
+
+@onready var pause_title_label: Label = _find_first_existing_node([
+	"UI/UIRoot/PauseLayer/PauseMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer/TitleLabel",
+	"UI/UIRoot/PauseLayer/PauseMenu/CenterContain/PanelContain/MarginCont/VBoxCont/TitleLab"
+]) as Label
+
+@onready var pause_resume_button: Button = _find_first_existing_node([
+	"UI/UIRoot/PauseLayer/PauseMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ResumeButton",
+	"UI/UIRoot/PauseLayer/PauseMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer/Resume",
+	"UI/UIRoot/PauseLayer/PauseMenu/CenterContain/PanelContain/MarginCont/VBoxCont/Resume"
+]) as Button
+
+@onready var pause_options_button: Button = _find_first_existing_node([
+	"UI/UIRoot/PauseLayer/PauseMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer/OptionsButton",
+	"UI/UIRoot/PauseLayer/PauseMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer/Options",
+	"UI/UIRoot/PauseLayer/PauseMenu/CenterContain/PanelContain/MarginCont/VBoxCont/Options"
+]) as Button
+
+@onready var pause_exit_button: Button = _find_first_existing_node([
+	"UI/UIRoot/PauseLayer/PauseMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ExitButton",
+	"UI/UIRoot/PauseLayer/PauseMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer/Exit",
+	"UI/UIRoot/PauseLayer/PauseMenu/CenterContain/PanelContain/MarginCont/VBoxCont/ExitButton",
+	"UI/UIRoot/PauseLayer/PauseMenu/CenterContain/PanelContain/MarginCont/VBoxCont/ExitButt"
+]) as Button
+
 var enemy_scene: PackedScene = preload("res://scenes/enemy.tscn")
 var enemy_projectile_scene: PackedScene = preload("res://scenes/enemy_projectile.tscn")
 var bullet_scene: PackedScene = preload("res://scenes/bullet.tscn")
@@ -26,6 +55,7 @@ var damage_number_script := load("res://scripts/damage_number.gd") as GDScript
 
 var game_over: bool = false
 var game_won: bool = false
+var pause_menu_open: bool = false
 var survival_time: float = 0.0
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
@@ -110,6 +140,8 @@ var enemies_per_spawn: int = 1
 func _ready() -> void:
 	rng.randomize()
 
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
 	_setup_camera()
 
 	player.died.connect(_on_player_died)
@@ -131,11 +163,46 @@ func _ready() -> void:
 	level_up_panel.visible = false
 	level_up_panel.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
 
+	if pause_menu != null:
+		pause_menu.visible = false
+		pause_menu.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
+
+	if pause_resume_button != null:
+		pause_resume_button.pressed.connect(_on_pause_resume_pressed)
+
+	if pause_options_button != null:
+		pause_options_button.pressed.connect(_on_pause_options_pressed)
+
+	if pause_exit_button != null:
+		pause_exit_button.pressed.connect(_on_pause_exit_pressed)
+
+	_setup_pause_menu_focus()
+
 	spawn_timer.wait_time = 1.0
 
 	_apply_bullet_upgrade_stats()
 	_on_player_exp_changed(player.level, player.current_exp, player.exp_to_next)
 	time_label.text = "Time: %.1f" % survival_time
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not event.is_action_pressed("pause"):
+		return
+
+	if game_over:
+		return
+
+	if level_up_panel.visible:
+		return
+
+	if pause_menu == null:
+		return
+
+	if pause_menu_open:
+		_close_pause_menu()
+	else:
+		_open_pause_menu()
+
+	get_viewport().set_input_as_handled()
 
 func _process(delta: float) -> void:
 	if game_over:
@@ -504,6 +571,10 @@ func _on_player_leveled_up(new_level: int) -> void:
 	_open_level_up_menu()
 
 func _open_level_up_menu() -> void:
+	if pause_menu != null:
+		pause_menu_open = false
+		pause_menu.visible = false
+
 	level_up_choices = _build_level_up_choices()
 
 	if level_up_choices.is_empty():
@@ -890,6 +961,11 @@ func _on_enemy_body_entered(body: Node, enemy: Area2D) -> void:
 func _on_player_died() -> void:
 	game_over = true
 	game_won = false
+	pause_menu_open = false
+
+	if pause_menu != null:
+		pause_menu.visible = false
+
 	game_over_label.text = "GAME OVER"
 	game_over_label.visible = true
 	restart_button.visible = true
@@ -905,6 +981,10 @@ func _on_player_won() -> void:
 
 	game_over = true
 	game_won = true
+	pause_menu_open = false
+
+	if pause_menu != null:
+		pause_menu.visible = false
 
 	game_over_label.text = "YOU WIN"
 	game_over_label.visible = true
@@ -917,8 +997,81 @@ func _on_player_won() -> void:
 			child.stop()
 
 func _on_restart_button_pressed() -> void:
+	pause_menu_open = false
+
+	if pause_menu != null:
+		pause_menu.visible = false
+
 	get_tree().paused = false
 	get_tree().reload_current_scene()
+
+func _open_pause_menu() -> void:
+	if pause_menu == null:
+		return
+
+	pause_menu_open = true
+	pause_menu.visible = true
+
+	if pause_title_label != null:
+		pause_title_label.text = "Paused"
+
+	get_tree().paused = true
+
+	if pause_resume_button != null:
+		pause_resume_button.grab_focus()
+
+func _close_pause_menu() -> void:
+	pause_menu_open = false
+
+	if pause_menu != null:
+		pause_menu.visible = false
+
+	get_tree().paused = false
+
+func _on_pause_resume_pressed() -> void:
+	_close_pause_menu()
+
+func _on_pause_options_pressed() -> void:
+	print("Pause options pressed.")
+	# Placeholder for now.
+	# If you want, next I can wire this to your actual options menu.
+
+func _on_pause_exit_pressed() -> void:
+	pause_menu_open = false
+
+	if pause_menu != null:
+		pause_menu.visible = false
+
+	get_tree().paused = false
+	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
+
+func _setup_pause_menu_focus() -> void:
+	if pause_resume_button == null or pause_options_button == null or pause_exit_button == null:
+		return
+
+	pause_resume_button.focus_mode = Control.FOCUS_ALL
+	pause_options_button.focus_mode = Control.FOCUS_ALL
+	pause_exit_button.focus_mode = Control.FOCUS_ALL
+
+	pause_resume_button.focus_neighbor_top = pause_exit_button.get_path()
+	pause_resume_button.focus_neighbor_bottom = pause_options_button.get_path()
+
+	pause_options_button.focus_neighbor_top = pause_resume_button.get_path()
+	pause_options_button.focus_neighbor_bottom = pause_exit_button.get_path()
+
+	pause_exit_button.focus_neighbor_top = pause_options_button.get_path()
+	pause_exit_button.focus_neighbor_bottom = pause_resume_button.get_path()
+
+	pause_resume_button.mouse_entered.connect(func() -> void: pause_resume_button.grab_focus())
+	pause_options_button.mouse_entered.connect(func() -> void: pause_options_button.grab_focus())
+	pause_exit_button.mouse_entered.connect(func() -> void: pause_exit_button.grab_focus())
+
+func _find_first_existing_node(paths: Array[String]) -> Node:
+	for node_path in paths:
+		var node: Node = get_node_or_null(node_path)
+		if node != null:
+			return node
+	return null
 
 func _roll_damage(base_damage: int) -> int:
 	if rng.randf() < crit_chance:
