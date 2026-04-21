@@ -140,7 +140,12 @@ var enemies_per_spawn: int = 1
 func _ready() -> void:
 	rng.randomize()
 
+	# Keep Main always processing so it can still receive pause input.
 	process_mode = Node.PROCESS_MODE_ALWAYS
+
+	# Force gameplay nodes to actually pause.
+	player.process_mode = Node.PROCESS_MODE_PAUSABLE
+	spawn_timer.process_mode = Node.PROCESS_MODE_PAUSABLE
 
 	_setup_camera()
 
@@ -268,6 +273,7 @@ func _setup_camera() -> void:
 	var camera: Camera2D = Camera2D.new()
 	camera.enabled = true
 	camera.position = Vector2.ZERO
+	camera.process_mode = Node.PROCESS_MODE_PAUSABLE
 	player.add_child(camera)
 
 func _update_spawn_difficulty() -> void:
@@ -318,6 +324,7 @@ func _handle_orbit_ball_weapon(delta: float) -> void:
 func _spawn_orbit_balls() -> void:
 	for i in range(orbit_ball_count):
 		var orbit_ball: Node = orbit_ball_scene.instantiate()
+		orbit_ball.process_mode = Node.PROCESS_MODE_PAUSABLE
 		add_child(orbit_ball)
 		orbit_ball.player = player
 		orbit_ball.lifetime = orbit_ball_duration
@@ -351,6 +358,7 @@ func _fire_lightning_weapon() -> void:
 			continue
 
 		var lightning: Node = lightning_scene.instantiate()
+		lightning.process_mode = Node.PROCESS_MODE_PAUSABLE
 		add_child(lightning)
 		lightning.global_position = enemy.global_position
 		lightning.strike_radius = 26.0 * attack_size_multiplier
@@ -375,6 +383,7 @@ func _fire_missile_weapon() -> void:
 		return
 
 	var missile = missile_scene.instantiate()
+	missile.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(missile)
 	missile.global_position = player.global_position
 
@@ -427,6 +436,7 @@ func _on_spawn_timer_timeout() -> void:
 
 func _spawn_enemy() -> void:
 	var enemy: Area2D = enemy_scene.instantiate()
+	enemy.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(enemy)
 
 	enemy.player = player
@@ -493,6 +503,7 @@ func _on_player_shoot_requested(spawn_position: Vector2) -> void:
 		return
 
 	var bullet: Node = bullet_scene.instantiate()
+	bullet.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(bullet)
 	bullet.global_position = spawn_position
 	bullet.direction = (target.global_position - spawn_position).normalized()
@@ -517,6 +528,7 @@ func _spawn_damage_number(world_position: Vector2, amount: int, color: Color) ->
 		return
 
 	var damage_number: Node2D = damage_number_script.new()
+	damage_number.process_mode = Node.PROCESS_MODE_PAUSABLE
 	damage_number.setup(amount, color)
 	add_child(damage_number)
 	damage_number.global_position = world_position
@@ -534,6 +546,7 @@ func _spawn_exp_pickup(enemy_position: Vector2, exp_amount: int, enemy_type: int
 	var exp_type: int = _get_exp_type_from_enemy_type(enemy_type, exp_amount)
 
 	var exp_pickup: Node = exp_pickup_scene.instantiate()
+	exp_pickup.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(exp_pickup)
 	exp_pickup.global_position = enemy_position
 	exp_pickup.setup(player, exp_type)
