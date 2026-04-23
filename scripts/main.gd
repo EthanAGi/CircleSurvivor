@@ -119,6 +119,7 @@ var missile_turn_speed: float = 0.0
 var missile_timer: float = 0.0
 
 var level_up_choices: Array[Dictionary] = []
+var level_up_buttons: Array[Button] = []
 
 const GRID_SIZE: float = 128.0
 const GRID_HALF_WIDTH: float = 2200.0
@@ -162,11 +163,19 @@ func _ready() -> void:
 	choice_button_2.pressed.connect(func() -> void: _on_level_up_choice_pressed(1))
 	choice_button_3.pressed.connect(func() -> void: _on_level_up_choice_pressed(2))
 
+	level_up_buttons = [
+		choice_button_1,
+		choice_button_2,
+		choice_button_3
+	]
+
 	game_over_label.visible = false
 	restart_button.visible = false
 
 	level_up_panel.visible = false
 	level_up_panel.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
+
+	_setup_level_up_menu_focus()
 
 	if pause_menu != null:
 		pause_menu.visible = false
@@ -275,6 +284,40 @@ func _setup_camera() -> void:
 	camera.position = Vector2.ZERO
 	camera.process_mode = Node.PROCESS_MODE_PAUSABLE
 	player.add_child(camera)
+
+func _setup_level_up_menu_focus() -> void:
+	if level_up_buttons.is_empty():
+		return
+
+	for i in range(level_up_buttons.size()):
+		var button: Button = level_up_buttons[i]
+		var button_above: Button = level_up_buttons[(i - 1 + level_up_buttons.size()) % level_up_buttons.size()]
+		var button_below: Button = level_up_buttons[(i + 1) % level_up_buttons.size()]
+
+		button.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
+		button.focus_mode = Control.FOCUS_ALL
+		button.mouse_filter = Control.MOUSE_FILTER_STOP
+
+		button.focus_neighbor_top = button_above.get_path()
+		button.focus_neighbor_bottom = button_below.get_path()
+		button.focus_neighbor_left = button.get_path()
+		button.focus_neighbor_right = button.get_path()
+
+		button.mouse_entered.connect(func(target_button: Button = button) -> void:
+			if target_button.visible and not target_button.disabled:
+				target_button.grab_focus()
+		)
+
+func _focus_first_level_up_button() -> void:
+	if level_up_choices.is_empty():
+		return
+
+	if choice_button_1.visible and not choice_button_1.disabled:
+		choice_button_1.grab_focus()
+	elif choice_button_2.visible and not choice_button_2.disabled:
+		choice_button_2.grab_focus()
+	elif choice_button_3.visible and not choice_button_3.disabled:
+		choice_button_3.grab_focus()
 
 func _update_spawn_difficulty() -> void:
 	var cycle_time: float = fmod(survival_time, SPAWN_CYCLE_LENGTH)
@@ -601,6 +644,8 @@ func _open_level_up_menu() -> void:
 	_set_choice_button(choice_button_3, 2)
 
 	get_tree().paused = true
+
+	call_deferred("_focus_first_level_up_button")
 
 func _close_level_up_menu() -> void:
 	level_up_panel.visible = false
