@@ -93,6 +93,10 @@ layout_mode = 2
 [node name="ChoiceButton3" type="Button" parent="UI/UIRoot/LevelUpPanel/VBoxContainer" unique_id=1658879027]
 layout_mode = 2
 
+[node name="SkipButton" type="Button" parent="UI/UIRoot/LevelUpPanel/VBoxContainer" unique_id=152470410]
+layout_mode = 2
+text = "Skip (+HP)"
+
 [node name="PauseLayer" type="CanvasLayer" parent="UI/UIRoot" unique_id=840838420]
 
 [node name="PauseMenu" type="Control" parent="UI/UIRoot/PauseLayer" unique_id=861721198]

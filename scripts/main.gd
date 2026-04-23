@@ -14,6 +14,9 @@ extends Node2D
 @onready var choice_button_1 = $UI/UIRoot/LevelUpPanel/VBoxContainer/ChoiceButton1
 @onready var choice_button_2 = $UI/UIRoot/LevelUpPanel/VBoxContainer/ChoiceButton2
 @onready var choice_button_3 = $UI/UIRoot/LevelUpPanel/VBoxContainer/ChoiceButton3
+@onready var skip_button: Button = _find_first_existing_node([
+	"UI/UIRoot/LevelUpPanel/VBoxContainer/SkipButton"
+]) as Button
 
 # Pause menu nodes
 @onready var pause_menu: Control = _find_first_existing_node([
@@ -141,10 +144,8 @@ var enemies_per_spawn: int = 1
 func _ready() -> void:
 	rng.randomize()
 
-	# Keep Main always processing so it can still receive pause input.
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
-	# Force gameplay nodes to actually pause.
 	player.process_mode = Node.PROCESS_MODE_PAUSABLE
 	spawn_timer.process_mode = Node.PROCESS_MODE_PAUSABLE
 
@@ -168,6 +169,10 @@ func _ready() -> void:
 		choice_button_2,
 		choice_button_3
 	]
+
+	if skip_button != null:
+		skip_button.pressed.connect(_on_skip_button_pressed)
+		level_up_buttons.append(skip_button)
 
 	game_over_label.visible = false
 	restart_button.visible = false
@@ -291,6 +296,9 @@ func _setup_level_up_menu_focus() -> void:
 
 	for i in range(level_up_buttons.size()):
 		var button: Button = level_up_buttons[i]
+		if button == null:
+			continue
+
 		var button_above: Button = level_up_buttons[(i - 1 + level_up_buttons.size()) % level_up_buttons.size()]
 		var button_below: Button = level_up_buttons[(i + 1) % level_up_buttons.size()]
 
@@ -318,6 +326,8 @@ func _focus_first_level_up_button() -> void:
 		choice_button_2.grab_focus()
 	elif choice_button_3.visible and not choice_button_3.disabled:
 		choice_button_3.grab_focus()
+	elif skip_button != null and skip_button.visible and not skip_button.disabled:
+		skip_button.grab_focus()
 
 func _update_spawn_difficulty() -> void:
 	var cycle_time: float = fmod(survival_time, SPAWN_CYCLE_LENGTH)
@@ -642,6 +652,7 @@ func _open_level_up_menu() -> void:
 	_set_choice_button(choice_button_1, 0)
 	_set_choice_button(choice_button_2, 1)
 	_set_choice_button(choice_button_3, 2)
+	_update_skip_button_text()
 
 	get_tree().paused = true
 
@@ -650,6 +661,31 @@ func _open_level_up_menu() -> void:
 func _close_level_up_menu() -> void:
 	level_up_panel.visible = false
 	get_tree().paused = false
+
+func _update_skip_button_text() -> void:
+	if skip_button == null:
+		return
+
+	skip_button.visible = true
+	skip_button.disabled = false
+	skip_button.modulate = Color(1.0, 1.0, 1.0)
+
+	if player.current_health < player.max_health:
+		skip_button.text = "Skip Upgrade\nHeal +1 HP"
+	else:
+		skip_button.text = "Skip Upgrade\nAlready at full health"
+
+func _on_skip_button_pressed() -> void:
+	if game_over:
+		return
+
+	if not level_up_panel.visible:
+		return
+
+	if player.current_health < player.max_health:
+		player.heal(1)
+
+	_close_level_up_menu()
 
 func _build_level_up_choices() -> Array[Dictionary]:
 	var pool: Array[Dictionary] = []
@@ -1091,8 +1127,6 @@ func _on_pause_resume_pressed() -> void:
 
 func _on_pause_options_pressed() -> void:
 	print("Pause options pressed.")
-	# Placeholder for now.
-	# If you want, next I can wire this to your actual options menu.
 
 func _on_pause_exit_pressed() -> void:
 	pause_menu_open = false
