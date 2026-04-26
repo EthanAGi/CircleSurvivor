@@ -18,7 +18,6 @@ extends Node2D
 	"UI/UIRoot/LevelUpPanel/VBoxContainer/SkipButton"
 ]) as Button
 
-# Pause menu nodes
 @onready var pause_menu: Control = _find_first_existing_node([
 	"UI/UIRoot/PauseLayer/PauseMenu"
 ]) as Control
@@ -85,6 +84,13 @@ const RARITY_EPIC: String = "Epic"
 
 const ENEMY_DAMAGE_NUMBER_COLOR: Color = Color(1.0, 0.95, 0.35)
 const PLAYER_DAMAGE_NUMBER_COLOR: Color = Color(0.45, 0.95, 1.0)
+
+const ENEMY_HIT_SCREEN_SHAKE: float = 4.0
+const PLAYER_HIT_SCREEN_SHAKE: float = 10.0
+const SCREEN_SHAKE_FADE_SPEED: float = 18.0
+
+var screen_shake_camera: Camera2D = null
+var screen_shake_strength: float = 0.0
 
 var bullet_level: int = 1
 var orbit_ball_level: int = 0
@@ -224,6 +230,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	get_viewport().set_input_as_handled()
 
 func _process(delta: float) -> void:
+	_update_screen_shake(delta)
+
 	if game_over:
 		queue_redraw()
 		return
@@ -284,12 +292,63 @@ func _draw() -> void:
 		y += GRID_SIZE
 
 func _setup_camera() -> void:
-	var camera: Camera2D = Camera2D.new()
-	camera.enabled = true
-	camera.position = Vector2.ZERO
-	camera.process_mode = Node.PROCESS_MODE_PAUSABLE
-	player.add_child(camera)
+	var player_camera: Camera2D = player.get_node_or_null("Camera2D") as Camera2D
 
+	if player_camera == null:
+		player_camera = Camera2D.new()
+		player_camera.name = "Camera2D"
+		player.add_child(player_camera)
+
+	screen_shake_camera = player_camera
+
+	var old_root_camera: Camera2D = get_node_or_null("Camera2D") as Camera2D
+	if old_root_camera != null and old_root_camera != screen_shake_camera:
+		old_root_camera.enabled = false
+		old_root_camera.queue_free()
+
+	screen_shake_camera.enabled = true
+	screen_shake_camera.make_current()
+
+	screen_shake_camera.position = Vector2.ZERO
+	screen_shake_camera.global_position = player.global_position
+	screen_shake_camera.offset = Vector2.ZERO
+	screen_shake_camera.zoom = Vector2.ONE
+	screen_shake_camera.rotation = 0.0
+	screen_shake_camera.process_mode = Node.PROCESS_MODE_ALWAYS
+
+	screen_shake_camera.set("anchor_mode", Camera2D.ANCHOR_MODE_DRAG_CENTER)
+
+	screen_shake_camera.set("limit_enabled", false)
+	screen_shake_camera.limit_left = -10000000
+	screen_shake_camera.limit_top = -10000000
+	screen_shake_camera.limit_right = 10000000
+	screen_shake_camera.limit_bottom = 10000000
+
+	screen_shake_camera.drag_horizontal_enabled = false
+	screen_shake_camera.drag_vertical_enabled = false
+	screen_shake_camera.drag_horizontal_offset = 0.0
+	screen_shake_camera.drag_vertical_offset = 0.0
+	screen_shake_camera.drag_left_margin = 0.0
+	screen_shake_camera.drag_top_margin = 0.0
+	screen_shake_camera.drag_right_margin = 0.0
+	screen_shake_camera.drag_bottom_margin = 0.0
+
+	screen_shake_camera.position_smoothing_enabled = false
+	screen_shake_camera.rotation_smoothing_enabled = false
+
+func _shake_screen(amount: float) -> void:
+	if screen_shake_camera == null:
+		return
+
+	if screen_shake_camera.has_method("shake"):
+		screen_shake_camera.shake(amount)
+
+func _update_screen_shake(_delta: float) -> void:
+	if screen_shake_camera == null:
+		return
+
+	screen_shake_camera.position = Vector2.ZERO
+	
 func _setup_level_up_menu_focus() -> void:
 	if level_up_buttons.is_empty():
 		return
@@ -569,12 +628,14 @@ func _on_enemy_damaged(damage_position: Vector2, amount: int) -> void:
 		return
 
 	_spawn_damage_number(damage_position, amount, ENEMY_DAMAGE_NUMBER_COLOR)
+	_shake_screen(ENEMY_HIT_SCREEN_SHAKE)
 
 func _on_player_damaged(damage_position: Vector2, amount: int) -> void:
 	if game_over:
 		return
 
 	_spawn_damage_number(damage_position, amount, PLAYER_DAMAGE_NUMBER_COLOR)
+	_shake_screen(PLAYER_HIT_SCREEN_SHAKE)
 
 func _spawn_damage_number(world_position: Vector2, amount: int, color: Color) -> void:
 	if damage_number_script == null:
