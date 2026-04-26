@@ -13,9 +13,13 @@ signal damaged(damage_position: Vector2, amount: int)
 @export var exp_growth_per_level: int = 3
 
 @export var max_health: int = 5
-@export var contact_invulnerability_time: float = 0.75
 
-# New player stats
+# How long the player cannot take damage after being hit.
+@export var contact_invulnerability_time: float = 2.5
+
+# How fast the player flashes while invulnerable.
+@export var invulnerability_flash_speed: float = 12.0
+
 @export var armor: int = 0
 @export var pickup_radius_multiplier: float = 1.0
 
@@ -31,7 +35,6 @@ var current_health: int = 0
 var can_take_damage: bool = true
 var damage_invulnerability_timer: float = 0.0
 
-# Fire-rate stacking support
 var base_fire_rate_wait_time: float = 0.5
 var fire_rate_multiplier: float = 1.0
 
@@ -60,11 +63,7 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		return
 
-	if not can_take_damage:
-		damage_invulnerability_timer -= delta
-		if damage_invulnerability_timer <= 0.0:
-			can_take_damage = true
-			damage_invulnerability_timer = 0.0
+	_update_invulnerability(delta)
 
 	var input_vector := Vector2.ZERO
 	input_vector.x = Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
@@ -75,6 +74,17 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 	queue_redraw()
+
+func _update_invulnerability(delta: float) -> void:
+	if can_take_damage:
+		return
+
+	damage_invulnerability_timer -= delta
+
+	if damage_invulnerability_timer <= 0.0:
+		can_take_damage = true
+		damage_invulnerability_timer = 0.0
+		modulate = Color.WHITE
 
 func gain_experience(amount: int) -> void:
 	if is_dead:
@@ -111,6 +121,7 @@ func take_damage(amount: int = 1) -> void:
 
 	damaged.emit(global_position + Vector2(0, -34), final_damage)
 	health_changed.emit(current_health, max_health)
+
 	queue_redraw()
 
 	if current_health <= 0:
@@ -159,6 +170,8 @@ func die() -> void:
 		return
 
 	is_dead = true
+	can_take_damage = false
+	modulate = Color.WHITE
 	fire_timer.stop()
 	died.emit()
 	queue_redraw()
@@ -175,7 +188,12 @@ func _draw() -> void:
 	if is_dead:
 		body_color = Color(0.4, 0.4, 0.4)
 	elif not can_take_damage:
-		body_color = Color(1.0, 0.75, 0.75)
+		var flash_value: float = sin(Time.get_ticks_msec() / 1000.0 * invulnerability_flash_speed)
+
+		if flash_value >= 0.0:
+			body_color = Color(1.0, 0.25, 0.25)
+		else:
+			body_color = Color(1.0, 1.0, 1.0)
 
 	draw_circle(Vector2.ZERO, 20.0, body_color)
 
