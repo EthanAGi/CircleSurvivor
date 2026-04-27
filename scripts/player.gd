@@ -230,3 +230,6 @@ func _draw_health_bar() -> void:
 		false,
 		1.0
 	)
+	
+	
+	
