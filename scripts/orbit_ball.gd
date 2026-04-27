@@ -6,6 +6,7 @@ extends Area2D
 @export var lifetime: float = 2.0
 @export var hit_cooldown: float = 0.35
 @export var ball_radius: float = 10.0
+@export var knockback_force: float = 115.0
 
 var player: Node2D = null
 var angle: float = 0.0
@@ -56,7 +57,11 @@ func _on_area_entered(area: Area2D) -> void:
 	if hit_timers.has(id):
 		return
 
-	area.take_damage(_roll_damage(damage))
+	var knockback_direction: Vector2 = (area.global_position - player.global_position).normalized()
+	if knockback_direction == Vector2.ZERO:
+		knockback_direction = (area.global_position - global_position).normalized()
+
+	area.take_damage(_roll_damage(damage), knockback_direction, knockback_force)
 	hit_timers[id] = hit_cooldown
 
 func _roll_damage(base_damage: int) -> int:

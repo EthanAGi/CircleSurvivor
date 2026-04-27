@@ -23,6 +23,10 @@ var is_active: bool = true
 var is_dead: bool = false
 var current_health: int = 0
 
+var knockback_velocity: Vector2 = Vector2.ZERO
+var knockback_friction: float = 9.0
+var knockback_stop_speed: float = 8.0
+
 var shoot_cooldown: float = 1.8
 var shoot_timer: float = 0.0
 var desired_range: float = 260.0
@@ -52,6 +56,7 @@ func _process(delta: float) -> void:
 		EnemyType.RANGED:
 			_process_ranged(delta)
 
+	_process_knockback(delta)
 	queue_redraw()
 
 func _apply_type_stats() -> void:
@@ -61,19 +66,16 @@ func _apply_type_stats() -> void:
 			max_health = 3
 			exp_drop_amount = 1
 			touch_damage = 1
-
 		EnemyType.FAST:
 			speed = 190.0
 			max_health = 2
 			exp_drop_amount = 1
 			touch_damage = 1
-
 		EnemyType.TANK:
 			speed = 75.0
 			max_health = 8
 			exp_drop_amount = 3
 			touch_damage = 2
-
 		EnemyType.RANGED:
 			speed = 105.0
 			max_health = 3
@@ -105,8 +107,6 @@ func _process_ranged(delta: float) -> void:
 		direction = to_player.normalized()
 	elif distance < retreat_range:
 		direction = (-to_player).normalized()
-	else:
-		direction = Vector2.ZERO
 
 	global_position += direction * speed * delta
 
@@ -136,9 +136,12 @@ func _fire_projectile() -> void:
 func stop() -> void:
 	is_active = false
 
-func take_damage(amount: int = 1) -> void:
+func take_damage(amount: int = 1, knockback_direction: Vector2 = Vector2.ZERO, knockback_force: float = 0.0) -> void:
 	if is_dead:
 		return
+
+	if knockback_direction != Vector2.ZERO and knockback_force > 0.0:
+		apply_knockback(knockback_direction, knockback_force)
 
 	current_health -= amount
 	damaged.emit(global_position + Vector2(0, -18), amount)
@@ -147,6 +150,27 @@ func take_damage(amount: int = 1) -> void:
 		die()
 	else:
 		queue_redraw()
+
+func apply_knockback(direction: Vector2, force: float) -> void:
+	if is_dead:
+		return
+
+	if direction == Vector2.ZERO:
+		return
+
+	knockback_velocity += direction.normalized() * force
+	knockback_velocity = knockback_velocity.limit_length(520.0)
+
+func _process_knockback(delta: float) -> void:
+	if knockback_velocity.length() <= knockback_stop_speed:
+		knockback_velocity = Vector2.ZERO
+		return
+
+	global_position += knockback_velocity * delta
+	knockback_velocity = knockback_velocity.move_toward(
+		Vector2.ZERO,
+		knockback_friction * knockback_velocity.length() * delta
+	)
 
 func get_touch_damage() -> int:
 	return touch_damage
@@ -197,12 +221,7 @@ func _draw_tank() -> void:
 		color = Color(0.9, 0.75, 1.0)
 
 	draw_rect(Rect2(Vector2(-22, -22), Vector2(44, 44)), color)
-	draw_rect(
-		Rect2(Vector2(-26, -26), Vector2(52, 52)),
-		Color(0.15, 0.0, 0.25, 1.0),
-		false,
-		3.0
-	)
+	draw_rect(Rect2(Vector2(-26, -26), Vector2(52, 52)), Color(0.15, 0.0, 0.25, 1.0), false, 3.0)
 
 func _draw_ranged() -> void:
 	var points := PackedVector2Array([

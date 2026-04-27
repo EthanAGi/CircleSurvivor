@@ -444,6 +444,7 @@ func _spawn_orbit_balls() -> void:
 		orbit_ball.ball_radius = 10.0 * attack_size_multiplier
 		orbit_ball.damage = 1
 		orbit_ball.crit_chance = crit_chance
+		orbit_ball.knockback_force = 115.0 * attack_size_multiplier
 
 func _handle_lightning_weapon(delta: float) -> void:
 	if lightning_level <= 0:
@@ -509,6 +510,8 @@ func _fire_missile_weapon() -> void:
 	missile.turn_speed = missile_turn_speed
 	missile.damage = _roll_damage(missile_damage)
 	missile.explosion_radius = 70.0 * attack_size_multiplier
+	missile.direct_hit_knockback_force = 230.0 * attack_size_multiplier
+	missile.explosion_knockback_force = 260.0 * attack_size_multiplier
 
 func _get_enemies_in_range(range_limit: float) -> Array[Area2D]:
 	var enemies_in_range: Array[Area2D] = []
@@ -622,6 +625,7 @@ func _on_player_shoot_requested(spawn_position: Vector2) -> void:
 	bullet.speed = 500.0 * projectile_speed_multiplier
 	bullet.damage = _roll_damage(1)
 	bullet.radius = 8.0 * attack_size_multiplier
+	bullet.knockback_force = 170.0 * attack_size_multiplier
 
 func _on_enemy_damaged(damage_position: Vector2, amount: int) -> void:
 	if game_over:

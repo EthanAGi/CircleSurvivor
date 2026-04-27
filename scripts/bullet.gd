@@ -4,6 +4,7 @@ extends Area2D
 @export var lifetime: float = 2.0
 @export var damage: int = 1
 @export var radius: float = 8.0
+@export var knockback_force: float = 170.0
 
 var direction: Vector2 = Vector2.RIGHT
 
@@ -30,7 +31,12 @@ func _on_body_entered(_body: Node) -> void:
 
 func _on_area_entered(area: Area2D) -> void:
 	if area.has_method("take_damage"):
-		area.take_damage(damage)
+		var knockback_direction: Vector2 = direction.normalized()
+		if knockback_direction == Vector2.ZERO:
+			knockback_direction = (area.global_position - global_position).normalized()
+
+		area.take_damage(damage, knockback_direction, knockback_force)
+
 	queue_free()
 
 func _draw() -> void:

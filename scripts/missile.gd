@@ -6,6 +6,8 @@ extends Area2D
 @export var lifetime: float = 4.0
 @export var explosion_radius: float = 70.0
 @export var explosion_visual_duration: float = 0.30
+@export var direct_hit_knockback_force: float = 230.0
+@export var explosion_knockback_force: float = 260.0
 
 var direction: Vector2 = Vector2.RIGHT
 var target: Area2D = null
@@ -61,8 +63,13 @@ func _explode() -> void:
 	for area in areas:
 		if area == self:
 			continue
+
 		if area.has_method("take_damage"):
-			area.take_damage(damage)
+			var direct_direction: Vector2 = (area.global_position - global_position).normalized()
+			if direct_direction == Vector2.ZERO:
+				direct_direction = direction.normalized()
+
+			area.take_damage(damage, direct_direction, direct_hit_knockback_force)
 
 	var state: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
 	var params: PhysicsShapeQueryParameters2D = PhysicsShapeQueryParameters2D.new()
@@ -82,8 +89,13 @@ func _explode() -> void:
 		var collider: Variant = result.get("collider")
 		if collider == self:
 			continue
+
 		if collider != null and collider.has_method("take_damage"):
-			collider.take_damage(damage)
+			var explosion_direction: Vector2 = (collider.global_position - global_position).normalized()
+			if explosion_direction == Vector2.ZERO:
+				explosion_direction = direction.normalized()
+
+			collider.take_damage(damage, explosion_direction, explosion_knockback_force)
 
 	current_explosion_draw_radius = explosion_radius
 	queue_redraw()
@@ -108,28 +120,9 @@ func _draw() -> void:
 	if exploded:
 		var alpha_progress: float = 1.0 - clamp(explosion_timer / explosion_visual_duration, 0.0, 1.0)
 
-		draw_circle(
-			Vector2.ZERO,
-			current_explosion_draw_radius,
-			Color(1.0, 0.1, 0.1, 0.22 * alpha_progress)
-		)
-
-		draw_arc(
-			Vector2.ZERO,
-			current_explosion_draw_radius,
-			0.0,
-			TAU,
-			64,
-			Color(1.0, 0.0, 0.0, 0.95 * alpha_progress),
-			3.0
-		)
-
-		draw_circle(
-			Vector2.ZERO,
-			5.0,
-			Color(1.0, 0.0, 0.0, 1.0 * alpha_progress)
-		)
-
+		draw_circle(Vector2.ZERO, current_explosion_draw_radius, Color(1.0, 0.1, 0.1, 0.22 * alpha_progress))
+		draw_arc(Vector2.ZERO, current_explosion_draw_radius, 0.0, TAU, 64, Color(1.0, 0.0, 0.0, 0.95 * alpha_progress), 3.0)
+		draw_circle(Vector2.ZERO, 5.0, Color(1.0, 0.0, 0.0, 1.0 * alpha_progress))
 		return
 
 	var points: PackedVector2Array = PackedVector2Array([
