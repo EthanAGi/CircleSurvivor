@@ -87,7 +87,14 @@ const PLAYER_DAMAGE_NUMBER_COLOR: Color = Color(0.45, 0.95, 1.0)
 
 const ENEMY_HIT_SCREEN_SHAKE: float = 4.0
 const PLAYER_HIT_SCREEN_SHAKE: float = 10.0
+const ELITE_SPAWN_SCREEN_SHAKE: float = 14.0
 const SCREEN_SHAKE_FADE_SPEED: float = 18.0
+
+const ENEMY_TYPE_BASIC: int = 0
+const ENEMY_TYPE_FAST: int = 1
+const ENEMY_TYPE_TANK: int = 2
+const ENEMY_TYPE_RANGED: int = 3
+const ENEMY_TYPE_ELITE: int = 4
 
 var screen_shake_camera: Camera2D = null
 var screen_shake_strength: float = 0.0
@@ -145,7 +152,13 @@ const SPAWN_CYCLE_LENGTH: float = CALM_DURATION + RAMP_DURATION + SWARM_DURATION
 const BASE_MAX_ENEMIES: int = 18
 const MAX_EXTRA_ENEMIES_OVER_TIME: int = 16
 
+const ELITE_FIRST_SPAWN_TIME: float = 30.0
+const ELITE_SPAWN_INTERVAL: float = 45.0
+
 var enemies_per_spawn: int = 1
+var next_elite_spawn_time: float = ELITE_FIRST_SPAWN_TIME
+var elite_spawn_count: int = 0
+var elite_warning_label: Label = null
 
 func _ready() -> void:
 	rng.randomize()
@@ -156,6 +169,7 @@ func _ready() -> void:
 	spawn_timer.process_mode = Node.PROCESS_MODE_PAUSABLE
 
 	_setup_camera()
+	_create_elite_warning_label()
 
 	player.died.connect(_on_player_died)
 	player.shoot_requested.connect(_on_player_shoot_requested)
@@ -252,6 +266,7 @@ func _process(delta: float) -> void:
 	time_label.text = "Time: %.1f" % survival_time
 
 	_update_spawn_difficulty()
+	_update_elite_spawning()
 
 	_handle_orbit_ball_weapon(delta)
 	_handle_lightning_weapon(delta)
@@ -348,7 +363,7 @@ func _update_screen_shake(_delta: float) -> void:
 		return
 
 	screen_shake_camera.position = Vector2.ZERO
-	
+
 func _setup_level_up_menu_focus() -> void:
 	if level_up_buttons.is_empty():
 		return
@@ -422,6 +437,62 @@ func _update_spawn_difficulty() -> void:
 
 	spawn_timer.wait_time = current_wait_time
 	enemies_per_spawn = current_enemies_per_spawn
+
+func _update_elite_spawning() -> void:
+	if survival_time < next_elite_spawn_time:
+		return
+
+	_spawn_elite_enemy()
+	_show_elite_warning()
+
+	elite_spawn_count += 1
+	next_elite_spawn_time += ELITE_SPAWN_INTERVAL
+
+func _create_elite_warning_label() -> void:
+	elite_warning_label = Label.new()
+	elite_warning_label.name = "EliteWarningLabel"
+	elite_warning_label.text = ""
+	elite_warning_label.visible = false
+	elite_warning_label.process_mode = Node.PROCESS_MODE_ALWAYS
+	elite_warning_label.z_index = 1000
+
+	add_child(elite_warning_label)
+
+	elite_warning_label.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	elite_warning_label.offset_left = 0.0
+	elite_warning_label.offset_top = 72.0
+	elite_warning_label.offset_right = 0.0
+	elite_warning_label.offset_bottom = 132.0
+
+	elite_warning_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	elite_warning_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	elite_warning_label.add_theme_font_size_override("font_size", 34)
+	elite_warning_label.add_theme_color_override("font_color", Color(1.0, 0.18, 0.08))
+	elite_warning_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.85))
+	elite_warning_label.add_theme_constant_override("shadow_offset_x", 3)
+	elite_warning_label.add_theme_constant_override("shadow_offset_y", 3)
+
+func _show_elite_warning() -> void:
+	if elite_warning_label == null:
+		return
+
+	elite_warning_label.text = "ELITE INCOMING"
+	elite_warning_label.visible = true
+	elite_warning_label.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	elite_warning_label.scale = Vector2(1.0, 1.0)
+
+	var tween: Tween = create_tween()
+	tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tween.tween_property(elite_warning_label, "scale", Vector2(1.12, 1.12), 0.16)
+	tween.tween_property(elite_warning_label, "scale", Vector2(1.0, 1.0), 0.16)
+	tween.tween_interval(0.55)
+	tween.tween_property(elite_warning_label, "modulate:a", 0.0, 0.45)
+	tween.tween_callback(func() -> void:
+		if elite_warning_label != null:
+			elite_warning_label.visible = false
+	)
+
+	_shake_screen(ELITE_SPAWN_SCREEN_SHAKE)
 
 func _handle_orbit_ball_weapon(delta: float) -> void:
 	if orbit_ball_level <= 0:
@@ -552,7 +623,6 @@ func _on_spawn_timer_timeout() -> void:
 func _spawn_enemy() -> void:
 	var enemy: Area2D = enemy_scene.instantiate()
 	enemy.process_mode = Node.PROCESS_MODE_PAUSABLE
-	add_child(enemy)
 
 	enemy.player = player
 	enemy.global_position = _get_spawn_position()
@@ -562,6 +632,26 @@ func _spawn_enemy() -> void:
 	enemy.body_entered.connect(_on_enemy_body_entered.bind(enemy))
 	enemy.died.connect(_on_enemy_died)
 	enemy.damaged.connect(_on_enemy_damaged)
+
+	add_child(enemy)
+
+func _spawn_elite_enemy() -> void:
+	var enemy: Area2D = enemy_scene.instantiate()
+	enemy.process_mode = Node.PROCESS_MODE_PAUSABLE
+
+	enemy.player = player
+	enemy.global_position = _get_spawn_position()
+	enemy.projectile_scene = enemy_projectile_scene
+	enemy.enemy_type = ENEMY_TYPE_ELITE
+
+	if "elite_level" in enemy:
+		enemy.elite_level = max(1, elite_spawn_count + 1)
+
+	enemy.body_entered.connect(_on_enemy_body_entered.bind(enemy))
+	enemy.died.connect(_on_enemy_died)
+	enemy.damaged.connect(_on_enemy_damaged)
+
+	add_child(enemy)
 
 func _get_active_enemy_count() -> int:
 	var count: int = 0
@@ -582,32 +672,32 @@ func _roll_enemy_type_for_current_time() -> int:
 
 	if survival_time < 25.0:
 		if roll < 0.80:
-			return 0
-		return 1
+			return ENEMY_TYPE_BASIC
+		return ENEMY_TYPE_FAST
 
 	if survival_time < 55.0:
 		if roll < 0.50:
-			return 0
+			return ENEMY_TYPE_BASIC
 		elif roll < 0.75:
-			return 1
-		return 2
+			return ENEMY_TYPE_FAST
+		return ENEMY_TYPE_TANK
 
 	if survival_time < 90.0:
 		if roll < 0.35:
-			return 0
+			return ENEMY_TYPE_BASIC
 		elif roll < 0.58:
-			return 1
+			return ENEMY_TYPE_FAST
 		elif roll < 0.82:
-			return 2
-		return 3
+			return ENEMY_TYPE_TANK
+		return ENEMY_TYPE_RANGED
 
 	if roll < 0.22:
-		return 0
+		return ENEMY_TYPE_BASIC
 	elif roll < 0.46:
-		return 1
+		return ENEMY_TYPE_FAST
 	elif roll < 0.72:
-		return 2
-	return 3
+		return ENEMY_TYPE_TANK
+	return ENEMY_TYPE_RANGED
 
 func _on_player_shoot_requested(spawn_position: Vector2) -> void:
 	if game_over:
@@ -672,14 +762,16 @@ func _spawn_exp_pickup(enemy_position: Vector2, exp_amount: int, enemy_type: int
 
 func _get_exp_type_from_enemy_type(enemy_type: int, exp_amount: int) -> int:
 	match enemy_type:
-		0:
+		ENEMY_TYPE_BASIC:
 			return 0
-		1:
+		ENEMY_TYPE_FAST:
 			return 1
-		2:
+		ENEMY_TYPE_TANK:
 			return 2
-		3:
+		ENEMY_TYPE_RANGED:
 			return 1
+		ENEMY_TYPE_ELITE:
+			return 2
 
 	if exp_amount >= 3:
 		return 2

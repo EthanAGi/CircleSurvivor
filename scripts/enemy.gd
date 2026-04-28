@@ -7,7 +7,8 @@ enum EnemyType {
 	BASIC,
 	FAST,
 	TANK,
-	RANGED
+	RANGED,
+	ELITE
 }
 
 @export var enemy_type: int = EnemyType.BASIC
@@ -17,6 +18,7 @@ var speed: float = 120.0
 var max_health: int = 3
 var exp_drop_amount: int = 1
 var touch_damage: int = 1
+var elite_level: int = 1
 
 var player: Node2D = null
 var is_active: bool = true
@@ -37,6 +39,7 @@ func _ready() -> void:
 	_apply_type_stats()
 	current_health = max_health
 	shoot_timer = randf_range(0.4, shoot_cooldown)
+	_apply_collision_size()
 	queue_redraw()
 
 func _process(delta: float) -> void:
@@ -48,13 +51,15 @@ func _process(delta: float) -> void:
 
 	match enemy_type:
 		EnemyType.BASIC:
-			_process_basic(delta)
+			_process_chase(delta)
 		EnemyType.FAST:
-			_process_fast(delta)
+			_process_chase(delta)
 		EnemyType.TANK:
-			_process_tank(delta)
+			_process_chase(delta)
 		EnemyType.RANGED:
 			_process_ranged(delta)
+		EnemyType.ELITE:
+			_process_chase(delta)
 
 	_process_knockback(delta)
 	queue_redraw()
@@ -66,16 +71,19 @@ func _apply_type_stats() -> void:
 			max_health = 3
 			exp_drop_amount = 1
 			touch_damage = 1
+
 		EnemyType.FAST:
 			speed = 190.0
 			max_health = 2
 			exp_drop_amount = 1
 			touch_damage = 1
+
 		EnemyType.TANK:
 			speed = 75.0
 			max_health = 8
 			exp_drop_amount = 3
 			touch_damage = 2
+
 		EnemyType.RANGED:
 			speed = 105.0
 			max_health = 3
@@ -86,15 +94,34 @@ func _apply_type_stats() -> void:
 			stop_range = 220.0
 			retreat_range = 170.0
 
-func _process_basic(delta: float) -> void:
-	var direction := (player.global_position - global_position).normalized()
-	global_position += direction * speed * delta
+		EnemyType.ELITE:
+			speed = 92.0 + float(elite_level - 1) * 4.0
+			max_health = 18 + (elite_level - 1) * 8
+			exp_drop_amount = 9 + (elite_level - 1) * 3
+			touch_damage = 2 + int(floor(float(elite_level - 1) / 2.0))
 
-func _process_fast(delta: float) -> void:
-	var direction := (player.global_position - global_position).normalized()
-	global_position += direction * speed * delta
+func _apply_collision_size() -> void:
+	var collision_shape := get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if collision_shape == null:
+		return
 
-func _process_tank(delta: float) -> void:
+	var circle_shape := collision_shape.shape as CircleShape2D
+	if circle_shape == null:
+		return
+
+	match enemy_type:
+		EnemyType.FAST:
+			circle_shape.radius = 13.0
+		EnemyType.TANK:
+			circle_shape.radius = 26.0
+		EnemyType.RANGED:
+			circle_shape.radius = 18.0
+		EnemyType.ELITE:
+			circle_shape.radius = 36.0
+		_:
+			circle_shape.radius = 17.0
+
+func _process_chase(delta: float) -> void:
 	var direction := (player.global_position - global_position).normalized()
 	global_position += direction * speed * delta
 
@@ -123,6 +150,7 @@ func _fire_projectile() -> void:
 		return
 
 	var projectile: Area2D = projectile_scene.instantiate()
+	projectile.process_mode = Node.PROCESS_MODE_PAUSABLE
 	get_parent().add_child(projectile)
 	projectile.global_position = global_position
 
@@ -193,6 +221,8 @@ func _draw() -> void:
 			_draw_tank()
 		EnemyType.RANGED:
 			_draw_ranged()
+		EnemyType.ELITE:
+			_draw_elite()
 
 func _draw_basic() -> void:
 	var color := Color(1.0, 0.2, 0.2)
@@ -238,3 +268,30 @@ func _draw_ranged() -> void:
 
 	draw_colored_polygon(points, color)
 	draw_circle(Vector2.ZERO, 4.0, Color(0.0, 0.35, 0.15))
+
+func _draw_elite() -> void:
+	var health_percent: float = 1.0
+	if max_health > 0:
+		health_percent = float(current_health) / float(max_health)
+
+	var color := Color(1.0, 0.78, 0.15)
+	if health_percent <= 0.66:
+		color = Color(1.0, 0.48, 0.12)
+	if health_percent <= 0.33:
+		color = Color(1.0, 0.18, 0.08)
+
+	var pulse: float = 1.0 + sin(Time.get_ticks_msec() / 120.0) * 0.06
+	var body_radius: float = 30.0 * pulse
+
+	draw_circle(Vector2.ZERO, body_radius + 7.0, Color(1.0, 0.95, 0.25, 0.22))
+	draw_circle(Vector2.ZERO, body_radius, color)
+	draw_circle(Vector2.ZERO, body_radius, Color(0.35, 0.12, 0.0, 1.0), false, 4.0)
+	draw_circle(Vector2(0, -8), 7.0, Color(1.0, 1.0, 1.0, 0.28))
+
+	var bar_width: float = 54.0
+	var bar_height: float = 6.0
+	var bar_pos := Vector2(-bar_width / 2.0, -44.0)
+
+	draw_rect(Rect2(bar_pos, Vector2(bar_width, bar_height)), Color(0.08, 0.02, 0.02, 0.9), true)
+	draw_rect(Rect2(bar_pos, Vector2(bar_width * health_percent, bar_height)), Color(1.0, 0.15, 0.08), true)
+	draw_rect(Rect2(bar_pos, Vector2(bar_width, bar_height)), Color(1.0, 0.9, 0.35), false, 1.5)
