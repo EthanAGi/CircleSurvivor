@@ -35,6 +35,19 @@ var desired_range: float = 260.0
 var stop_range: float = 220.0
 var retreat_range: float = 170.0
 
+var burn_time_left: float = 0.0
+var burn_tick_timer: float = 0.0
+var burn_tick_interval: float = 0.5
+var burn_tick_damage: int = 1
+
+var shock_time_left: float = 0.0
+var shock_tick_timer: float = 0.0
+var shock_tick_interval: float = 0.45
+var shock_tick_damage: int = 1
+var shock_chain_radius: float = 90.0
+var shock_chain_damage: int = 1
+var shock_has_chained: bool = false
+
 func _ready() -> void:
 	_apply_type_stats()
 	current_health = max_health
@@ -43,10 +56,17 @@ func _ready() -> void:
 	queue_redraw()
 
 func _process(delta: float) -> void:
-	if not is_active or is_dead:
+	if is_dead:
+		return
+
+	_process_status_effects(delta)
+
+	if not is_active:
+		queue_redraw()
 		return
 
 	if player == null or not is_instance_valid(player):
+		queue_redraw()
 		return
 
 	match enemy_type:
@@ -64,6 +84,90 @@ func _process(delta: float) -> void:
 	_process_knockback(delta)
 	queue_redraw()
 
+func _process_status_effects(delta: float) -> void:
+	if burn_time_left > 0.0:
+		burn_time_left -= delta
+		burn_tick_timer -= delta
+
+		if burn_tick_timer <= 0.0:
+			burn_tick_timer = burn_tick_interval
+			take_damage(burn_tick_damage)
+
+		if burn_time_left <= 0.0:
+			burn_time_left = 0.0
+
+	if shock_time_left > 0.0:
+		shock_time_left -= delta
+		shock_tick_timer -= delta
+
+		if shock_tick_timer <= 0.0:
+			shock_tick_timer = shock_tick_interval
+			take_damage(shock_tick_damage)
+
+		if not shock_has_chained:
+			shock_has_chained = true
+			_chain_shock_to_nearby_enemy()
+
+		if shock_time_left <= 0.0:
+			shock_time_left = 0.0
+
+func apply_burn(duration: float, tick_damage: int, tick_interval: float = 0.5) -> void:
+	if is_dead:
+		return
+
+	burn_time_left = max(burn_time_left, duration)
+	burn_tick_damage = max(burn_tick_damage, tick_damage)
+	burn_tick_interval = max(0.1, tick_interval)
+	burn_tick_timer = min(burn_tick_timer, 0.05)
+	queue_redraw()
+
+func apply_shock(duration: float, tick_damage: int, tick_interval: float = 0.45, chain_radius: float = 90.0, chain_damage: int = 1, can_chain: bool = true) -> void:
+	if is_dead:
+		return
+
+	shock_time_left = max(shock_time_left, duration)
+	shock_tick_damage = max(shock_tick_damage, tick_damage)
+	shock_tick_interval = max(0.1, tick_interval)
+	shock_chain_radius = chain_radius
+	shock_chain_damage = chain_damage
+	shock_tick_timer = min(shock_tick_timer, 0.05)
+
+	if can_chain:
+		shock_has_chained = false
+
+	queue_redraw()
+
+func _chain_shock_to_nearby_enemy() -> void:
+	var parent_node := get_parent()
+	if parent_node == null:
+		return
+
+	var best_enemy: Area2D = null
+	var best_distance: float = shock_chain_radius
+
+	for child in parent_node.get_children():
+		if child == self:
+			continue
+
+		if child is Area2D and child.has_method("apply_shock"):
+			if not is_instance_valid(child):
+				continue
+
+			var distance: float = global_position.distance_to(child.global_position)
+			if distance <= best_distance:
+				best_distance = distance
+				best_enemy = child
+
+	if best_enemy != null:
+		best_enemy.apply_shock(
+			shock_time_left * 0.65,
+			shock_chain_damage,
+			shock_tick_interval,
+			shock_chain_radius,
+			shock_chain_damage,
+			false
+		)
+
 func _apply_type_stats() -> void:
 	match enemy_type:
 		EnemyType.BASIC:
@@ -71,19 +175,16 @@ func _apply_type_stats() -> void:
 			max_health = 3
 			exp_drop_amount = 1
 			touch_damage = 1
-
 		EnemyType.FAST:
 			speed = 190.0
 			max_health = 2
 			exp_drop_amount = 1
 			touch_damage = 1
-
 		EnemyType.TANK:
 			speed = 75.0
 			max_health = 8
 			exp_drop_amount = 3
 			touch_damage = 2
-
 		EnemyType.RANGED:
 			speed = 105.0
 			max_health = 3
@@ -93,7 +194,6 @@ func _apply_type_stats() -> void:
 			desired_range = 260.0
 			stop_range = 220.0
 			retreat_range = 170.0
-
 		EnemyType.ELITE:
 			speed = 92.0 + float(elite_level - 1) * 4.0
 			max_health = 18 + (elite_level - 1) * 8
@@ -223,6 +323,20 @@ func _draw() -> void:
 			_draw_ranged()
 		EnemyType.ELITE:
 			_draw_elite()
+
+	_draw_status_effects()
+
+func _draw_status_effects() -> void:
+	if burn_time_left > 0.0:
+		var burn_alpha: float = 0.35 + sin(Time.get_ticks_msec() / 85.0) * 0.12
+		draw_circle(Vector2.ZERO, 24.0, Color(1.0, 0.25, 0.0, burn_alpha))
+		draw_arc(Vector2.ZERO, 28.0, 0.0, TAU, 32, Color(1.0, 0.55, 0.0, 0.95), 2.0)
+
+	if shock_time_left > 0.0:
+		var shock_alpha: float = 0.35 + sin(Time.get_ticks_msec() / 55.0) * 0.18
+		draw_arc(Vector2.ZERO, 34.0, 0.0, TAU, 32, Color(0.45, 0.9, 1.0, shock_alpha), 3.0)
+		draw_line(Vector2(-20, -20), Vector2(18, 18), Color(0.65, 0.95, 1.0, 0.9), 2.0)
+		draw_line(Vector2(20, -18), Vector2(-18, 18), Color(0.65, 0.95, 1.0, 0.9), 2.0)
 
 func _draw_basic() -> void:
 	var color := Color(1.0, 0.2, 0.2)

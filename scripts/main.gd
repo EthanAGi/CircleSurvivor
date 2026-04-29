@@ -128,11 +128,21 @@ var lightning_strike_count: int = 0
 var lightning_damage: int = 0
 var lightning_timer: float = 0.0
 
+var lightning_shock_duration: float = 0.0
+var lightning_shock_tick_damage: int = 0
+var lightning_shock_tick_interval: float = 0.45
+var lightning_shock_chain_radius: float = 0.0
+var lightning_shock_chain_damage: int = 0
+
 var missile_cooldown: float = 99999.0
 var missile_damage: int = 0
 var missile_speed: float = 0.0
 var missile_turn_speed: float = 0.0
 var missile_timer: float = 0.0
+
+var missile_burn_duration: float = 0.0
+var missile_burn_tick_damage: int = 0
+var missile_burn_tick_interval: float = 0.5
 
 var level_up_choices: Array[Dictionary] = []
 var level_up_buttons: Array[Button] = []
@@ -550,6 +560,16 @@ func _fire_lightning_weapon() -> void:
 		if enemy.has_method("take_damage"):
 			enemy.take_damage(_roll_damage(lightning_damage))
 
+		if enemy.has_method("apply_shock"):
+			enemy.apply_shock(
+				lightning_shock_duration,
+				lightning_shock_tick_damage,
+				lightning_shock_tick_interval,
+				lightning_shock_chain_radius * attack_size_multiplier,
+				lightning_shock_chain_damage,
+				true
+			)
+
 func _handle_missile_weapon(delta: float) -> void:
 	if missile_level <= 0:
 		return
@@ -583,6 +603,9 @@ func _fire_missile_weapon() -> void:
 	missile.explosion_radius = 70.0 * attack_size_multiplier
 	missile.direct_hit_knockback_force = 230.0 * attack_size_multiplier
 	missile.explosion_knockback_force = 260.0 * attack_size_multiplier
+	missile.burn_duration = missile_burn_duration
+	missile.burn_tick_damage = missile_burn_tick_damage
+	missile.burn_tick_interval = missile_burn_tick_interval
 
 func _get_enemies_in_range(range_limit: float) -> Array[Area2D]:
 	var enemies_in_range: Array[Area2D] = []
@@ -867,23 +890,23 @@ func _build_level_up_choices() -> Array[Dictionary]:
 	if lightning_level == 0:
 		pool.append({
 			"id": "unlock_lightning",
-			"text": "Unlock Lightning\nStrikes nearby enemies automatically"
+			"text": "Unlock Lightning\nStrikes nearby enemies and shocks them"
 		})
 	elif lightning_level < LIGHTNING_MAX_LEVEL:
 		pool.append({
 			"id": "lightning_upgrade",
-			"text": "Upgrade Lightning\nMore strikes, range, and damage"
+			"text": "Upgrade Lightning\nMore strikes, range, damage, and shock"
 		})
 
 	if missile_level == 0:
 		pool.append({
 			"id": "unlock_missile",
-			"text": "Unlock Homing Missile\nTracks enemies and hits hard"
+			"text": "Unlock Homing Missile\nTracks enemies, explodes, and burns"
 		})
 	elif missile_level < MISSILE_MAX_LEVEL:
 		pool.append({
 			"id": "missile_upgrade",
-			"text": "Upgrade Homing Missile\nFaster reload, more damage, better tracking"
+			"text": "Upgrade Homing Missile\nFaster reload, more damage, and stronger burns"
 		})
 
 	if max_health_upgrade_count < MAX_HEALTH_UPGRADES:
@@ -1126,26 +1149,51 @@ func _apply_lightning_upgrade_stats() -> void:
 			lightning_range = 260.0
 			lightning_strike_count = 1
 			lightning_damage = 2
+			lightning_shock_duration = 1.5
+			lightning_shock_tick_damage = 1
+			lightning_shock_tick_interval = 0.45
+			lightning_shock_chain_radius = 80.0
+			lightning_shock_chain_damage = 1
 		2:
 			lightning_cooldown = 2.8
 			lightning_range = 300.0
 			lightning_strike_count = 1
 			lightning_damage = 3
+			lightning_shock_duration = 1.7
+			lightning_shock_tick_damage = 1
+			lightning_shock_tick_interval = 0.45
+			lightning_shock_chain_radius = 90.0
+			lightning_shock_chain_damage = 1
 		3:
 			lightning_cooldown = 2.4
 			lightning_range = 340.0
 			lightning_strike_count = 2
 			lightning_damage = 3
+			lightning_shock_duration = 1.9
+			lightning_shock_tick_damage = 1
+			lightning_shock_tick_interval = 0.45
+			lightning_shock_chain_radius = 105.0
+			lightning_shock_chain_damage = 1
 		4:
 			lightning_cooldown = 2.0
 			lightning_range = 380.0
 			lightning_strike_count = 2
 			lightning_damage = 4
+			lightning_shock_duration = 2.1
+			lightning_shock_tick_damage = 1
+			lightning_shock_tick_interval = 0.45
+			lightning_shock_chain_radius = 120.0
+			lightning_shock_chain_damage = 2
 		_:
 			lightning_cooldown = 1.7
 			lightning_range = 430.0
 			lightning_strike_count = 3
 			lightning_damage = 4
+			lightning_shock_duration = 2.4
+			lightning_shock_tick_damage = 2
+			lightning_shock_tick_interval = 0.45
+			lightning_shock_chain_radius = 140.0
+			lightning_shock_chain_damage = 2
 
 func _apply_missile_upgrade_stats() -> void:
 	match missile_level:
@@ -1154,26 +1202,41 @@ func _apply_missile_upgrade_stats() -> void:
 			missile_damage = 3
 			missile_speed = 320.0
 			missile_turn_speed = 5.0
+			missile_burn_duration = 2.0
+			missile_burn_tick_damage = 1
+			missile_burn_tick_interval = 0.5
 		2:
 			missile_cooldown = 2.0
 			missile_damage = 4
 			missile_speed = 340.0
 			missile_turn_speed = 5.8
+			missile_burn_duration = 2.3
+			missile_burn_tick_damage = 1
+			missile_burn_tick_interval = 0.5
 		3:
 			missile_cooldown = 1.7
 			missile_damage = 5
 			missile_speed = 360.0
 			missile_turn_speed = 6.5
+			missile_burn_duration = 2.6
+			missile_burn_tick_damage = 1
+			missile_burn_tick_interval = 0.5
 		4:
 			missile_cooldown = 1.45
 			missile_damage = 6
 			missile_speed = 390.0
 			missile_turn_speed = 7.2
+			missile_burn_duration = 2.8
+			missile_burn_tick_damage = 2
+			missile_burn_tick_interval = 0.5
 		_:
 			missile_cooldown = 1.2
 			missile_damage = 7
 			missile_speed = 420.0
 			missile_turn_speed = 8.0
+			missile_burn_duration = 3.0
+			missile_burn_tick_damage = 2
+			missile_burn_tick_interval = 0.5
 
 func _get_nearest_enemy() -> Area2D:
 	var nearest: Area2D = null

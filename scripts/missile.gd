@@ -9,6 +9,10 @@ extends Area2D
 @export var direct_hit_knockback_force: float = 230.0
 @export var explosion_knockback_force: float = 260.0
 
+@export var burn_duration: float = 2.5
+@export var burn_tick_damage: int = 1
+@export var burn_tick_interval: float = 0.5
+
 var direction: Vector2 = Vector2.RIGHT
 var target: Area2D = null
 var exploded: bool = false
@@ -59,6 +63,8 @@ func _explode() -> void:
 	if collision_shape != null:
 		collision_shape.set_deferred("disabled", true)
 
+	var damaged_targets: Array[Node] = []
+
 	var areas: Array[Area2D] = get_overlapping_areas()
 	for area in areas:
 		if area == self:
@@ -70,6 +76,8 @@ func _explode() -> void:
 				direct_direction = direction.normalized()
 
 			area.take_damage(damage, direct_direction, direct_hit_knockback_force)
+			_apply_burn_to_target(area)
+			damaged_targets.append(area)
 
 	var state: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
 	var params: PhysicsShapeQueryParameters2D = PhysicsShapeQueryParameters2D.new()
@@ -90,15 +98,26 @@ func _explode() -> void:
 		if collider == self:
 			continue
 
+		if collider in damaged_targets:
+			continue
+
 		if collider != null and collider.has_method("take_damage"):
 			var explosion_direction: Vector2 = (collider.global_position - global_position).normalized()
 			if explosion_direction == Vector2.ZERO:
 				explosion_direction = direction.normalized()
 
 			collider.take_damage(damage, explosion_direction, explosion_knockback_force)
+			_apply_burn_to_target(collider)
 
 	current_explosion_draw_radius = explosion_radius
 	queue_redraw()
+
+func _apply_burn_to_target(target_node: Node) -> void:
+	if target_node == null:
+		return
+
+	if target_node.has_method("apply_burn"):
+		target_node.apply_burn(burn_duration, burn_tick_damage, burn_tick_interval)
 
 func _update_explosion_visual(delta: float) -> void:
 	explosion_timer += delta
@@ -120,9 +139,9 @@ func _draw() -> void:
 	if exploded:
 		var alpha_progress: float = 1.0 - clamp(explosion_timer / explosion_visual_duration, 0.0, 1.0)
 
-		draw_circle(Vector2.ZERO, current_explosion_draw_radius, Color(1.0, 0.1, 0.1, 0.22 * alpha_progress))
-		draw_arc(Vector2.ZERO, current_explosion_draw_radius, 0.0, TAU, 64, Color(1.0, 0.0, 0.0, 0.95 * alpha_progress), 3.0)
-		draw_circle(Vector2.ZERO, 5.0, Color(1.0, 0.0, 0.0, 1.0 * alpha_progress))
+		draw_circle(Vector2.ZERO, current_explosion_draw_radius, Color(1.0, 0.22, 0.0, 0.24 * alpha_progress))
+		draw_arc(Vector2.ZERO, current_explosion_draw_radius, 0.0, TAU, 64, Color(1.0, 0.35, 0.0, 0.95 * alpha_progress), 3.0)
+		draw_circle(Vector2.ZERO, 5.0, Color(1.0, 0.55, 0.0, 1.0 * alpha_progress))
 		return
 
 	var points: PackedVector2Array = PackedVector2Array([
