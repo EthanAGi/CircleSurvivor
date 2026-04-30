@@ -133,6 +133,7 @@ var lightning_shock_tick_damage: int = 0
 var lightning_shock_tick_interval: float = 0.45
 var lightning_shock_chain_radius: float = 0.0
 var lightning_shock_chain_damage: int = 0
+var lightning_aoe_radius: float = 0.0
 
 var missile_cooldown: float = 99999.0
 var missile_damage: int = 0
@@ -544,6 +545,7 @@ func _fire_lightning_weapon() -> void:
 		return
 
 	var strikes_to_fire: int = min(lightning_strike_count, nearby_enemies.size())
+	var already_struck_enemies: Array[Area2D] = []
 
 	for i in range(strikes_to_fire):
 		var enemy: Area2D = nearby_enemies[i]
@@ -551,14 +553,48 @@ func _fire_lightning_weapon() -> void:
 		if enemy == null or not is_instance_valid(enemy):
 			continue
 
+		if enemy in already_struck_enemies:
+			continue
+
+		already_struck_enemies.append(enemy)
+
+		var strike_position: Vector2 = enemy.global_position
+		var strike_damage: int = _roll_damage(lightning_damage)
+		var scaled_aoe_radius: float = lightning_aoe_radius * attack_size_multiplier
+
 		var lightning: Node = lightning_scene.instantiate()
 		lightning.process_mode = Node.PROCESS_MODE_PAUSABLE
 		add_child(lightning)
-		lightning.global_position = enemy.global_position
-		lightning.strike_radius = 26.0 * attack_size_multiplier
+		lightning.global_position = strike_position
+		lightning.strike_radius = scaled_aoe_radius
+
+		_damage_lightning_aoe(strike_position, scaled_aoe_radius, strike_damage)
+
+func _damage_lightning_aoe(strike_position: Vector2, aoe_radius: float, strike_damage: int) -> void:
+	var damaged_enemies: Array[Area2D] = []
+
+	for child in get_children():
+		if not (child is Area2D):
+			continue
+
+		var enemy: Area2D = child as Area2D
+
+		if not is_instance_valid(enemy):
+			continue
+
+		if not enemy.scene_file_path.ends_with("enemy.tscn"):
+			continue
+
+		if enemy.global_position.distance_to(strike_position) > aoe_radius:
+			continue
+
+		if enemy in damaged_enemies:
+			continue
+
+		damaged_enemies.append(enemy)
 
 		if enemy.has_method("take_damage"):
-			enemy.take_damage(_roll_damage(lightning_damage))
+			enemy.take_damage(strike_damage)
 
 		if enemy.has_method("apply_shock"):
 			enemy.apply_shock(
@@ -890,12 +926,12 @@ func _build_level_up_choices() -> Array[Dictionary]:
 	if lightning_level == 0:
 		pool.append({
 			"id": "unlock_lightning",
-			"text": "Unlock Lightning\nStrikes nearby enemies and shocks them"
+			"text": "Unlock Lightning\nStrikes nearby enemies with shock AOE"
 		})
 	elif lightning_level < LIGHTNING_MAX_LEVEL:
 		pool.append({
 			"id": "lightning_upgrade",
-			"text": "Upgrade Lightning\nMore strikes, range, damage, and shock"
+			"text": "Upgrade Lightning\nMore strikes, range, damage, AOE, and shock"
 		})
 
 	if missile_level == 0:
@@ -1149,6 +1185,7 @@ func _apply_lightning_upgrade_stats() -> void:
 			lightning_range = 260.0
 			lightning_strike_count = 1
 			lightning_damage = 2
+			lightning_aoe_radius = 60.0
 			lightning_shock_duration = 1.5
 			lightning_shock_tick_damage = 1
 			lightning_shock_tick_interval = 0.45
@@ -1159,6 +1196,7 @@ func _apply_lightning_upgrade_stats() -> void:
 			lightning_range = 300.0
 			lightning_strike_count = 1
 			lightning_damage = 3
+			lightning_aoe_radius = 70.0
 			lightning_shock_duration = 1.7
 			lightning_shock_tick_damage = 1
 			lightning_shock_tick_interval = 0.45
@@ -1169,6 +1207,7 @@ func _apply_lightning_upgrade_stats() -> void:
 			lightning_range = 340.0
 			lightning_strike_count = 2
 			lightning_damage = 3
+			lightning_aoe_radius = 80.0
 			lightning_shock_duration = 1.9
 			lightning_shock_tick_damage = 1
 			lightning_shock_tick_interval = 0.45
@@ -1179,6 +1218,7 @@ func _apply_lightning_upgrade_stats() -> void:
 			lightning_range = 380.0
 			lightning_strike_count = 2
 			lightning_damage = 4
+			lightning_aoe_radius = 90.0
 			lightning_shock_duration = 2.1
 			lightning_shock_tick_damage = 1
 			lightning_shock_tick_interval = 0.45
@@ -1189,6 +1229,7 @@ func _apply_lightning_upgrade_stats() -> void:
 			lightning_range = 430.0
 			lightning_strike_count = 3
 			lightning_damage = 4
+			lightning_aoe_radius = 105.0
 			lightning_shock_duration = 2.4
 			lightning_shock_tick_damage = 2
 			lightning_shock_tick_interval = 0.45
