@@ -67,6 +67,8 @@ const BULLET_MAX_LEVEL: int = 8
 const ORBIT_BALL_MAX_LEVEL: int = 5
 const LIGHTNING_MAX_LEVEL: int = 5
 const MISSILE_MAX_LEVEL: int = 5
+const LIGHTNING_EVOLUTION_REQUIRED_ATTACK_SIZE_UPGRADES: int = 6
+const MISSILE_EVOLUTION_REQUIRED_PROJECTILE_SPEED_UPGRADES: int = 6
 
 const MAX_HEALTH_UPGRADES: int = 8
 const MAX_ARMOR_UPGRADES: int = 5
@@ -103,6 +105,9 @@ var bullet_level: int = 1
 var orbit_ball_level: int = 0
 var lightning_level: int = 0
 var missile_level: int = 0
+
+var lightning_evolved: bool = false
+var missile_evolved: bool = false
 
 var max_health_upgrade_count: int = 0
 var armor_upgrade_count: int = 0
@@ -622,6 +627,16 @@ func _fire_missile_weapon() -> void:
 	if target == null:
 		return
 
+	if missile_evolved:
+		_spawn_player_missile(target, -0.18)
+		_spawn_player_missile(target, 0.18)
+	else:
+		_spawn_player_missile(target, 0.0)
+
+func _spawn_player_missile(target: Area2D, angle_offset: float = 0.0) -> void:
+	if target == null or not is_instance_valid(target):
+		return
+
 	var missile = missile_scene.instantiate()
 	missile.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(missile)
@@ -630,6 +645,8 @@ func _fire_missile_weapon() -> void:
 	var initial_direction: Vector2 = (target.global_position - player.global_position).normalized()
 	if initial_direction == Vector2.ZERO:
 		initial_direction = Vector2.RIGHT
+
+	initial_direction = initial_direction.rotated(angle_offset).normalized()
 
 	missile.direction = initial_direction
 	missile.target = target
@@ -642,6 +659,9 @@ func _fire_missile_weapon() -> void:
 	missile.burn_duration = missile_burn_duration
 	missile.burn_tick_damage = missile_burn_tick_damage
 	missile.burn_tick_interval = missile_burn_tick_interval
+
+	if "is_napalm_launcher" in missile:
+		missile.is_napalm_launcher = missile_evolved
 
 func _get_enemies_in_range(range_limit: float) -> Array[Area2D]:
 	var enemies_in_range: Array[Area2D] = []
@@ -906,6 +926,20 @@ func _on_skip_button_pressed() -> void:
 func _build_level_up_choices() -> Array[Dictionary]:
 	var pool: Array[Dictionary] = []
 
+	if _can_evolve_lightning():
+		pool.append({
+			"id": "evolve_lightning",
+			"text": "EVOLVE Lightning: Chain Storm\nRequires max Lightning + max Attack Size",
+			"rarity": RARITY_EPIC
+		})
+
+	if _can_evolve_missile():
+		pool.append({
+			"id": "evolve_missile",
+			"text": "EVOLVE Missile: Napalm Launcher\nRequires max Missile + max Projectile Speed",
+			"rarity": RARITY_EPIC
+		})
+
 	if bullet_level < BULLET_MAX_LEVEL:
 		pool.append({
 			"id": "bullet_upgrade",
@@ -1011,6 +1045,20 @@ func _build_level_up_choices() -> Array[Dictionary]:
 
 	return result
 
+func _can_evolve_lightning() -> bool:
+	return (
+		not lightning_evolved
+		and lightning_level >= LIGHTNING_MAX_LEVEL
+		and attack_size_upgrade_count >= LIGHTNING_EVOLUTION_REQUIRED_ATTACK_SIZE_UPGRADES
+	)
+
+func _can_evolve_missile() -> bool:
+	return (
+		not missile_evolved
+		and missile_level >= MISSILE_MAX_LEVEL
+		and projectile_speed_upgrade_count >= MISSILE_EVOLUTION_REQUIRED_PROJECTILE_SPEED_UPGRADES
+	)
+
 func _make_rarity_choice(choice_id: String, title: String, description: String, amount: float) -> Dictionary:
 	var rarity: String = _roll_rarity()
 	return {
@@ -1100,6 +1148,18 @@ func _on_level_up_choice_pressed(index: int) -> void:
 		"missile_upgrade":
 			missile_level += 1
 			_apply_missile_upgrade_stats()
+
+		"evolve_lightning":
+			lightning_evolved = true
+			_apply_lightning_upgrade_stats()
+			lightning_timer = 0.1
+			_shake_screen(ELITE_SPAWN_SCREEN_SHAKE)
+
+		"evolve_missile":
+			missile_evolved = true
+			_apply_missile_upgrade_stats()
+			missile_timer = 0.1
+			_shake_screen(ELITE_SPAWN_SCREEN_SHAKE)
 
 		"max_health_upgrade":
 			max_health_upgrade_count += 1
@@ -1236,6 +1296,18 @@ func _apply_lightning_upgrade_stats() -> void:
 			lightning_shock_chain_radius = 140.0
 			lightning_shock_chain_damage = 2
 
+	if lightning_evolved:
+		lightning_cooldown = 1.05
+		lightning_range = 560.0
+		lightning_strike_count = 6
+		lightning_damage = 6
+		lightning_aoe_radius = 135.0
+		lightning_shock_duration = 3.2
+		lightning_shock_tick_damage = 2
+		lightning_shock_tick_interval = 0.35
+		lightning_shock_chain_radius = 210.0
+		lightning_shock_chain_damage = 3
+
 func _apply_missile_upgrade_stats() -> void:
 	match missile_level:
 		1:
@@ -1278,6 +1350,15 @@ func _apply_missile_upgrade_stats() -> void:
 			missile_burn_duration = 3.0
 			missile_burn_tick_damage = 2
 			missile_burn_tick_interval = 0.5
+
+	if missile_evolved:
+		missile_cooldown = 0.9
+		missile_damage = 9
+		missile_speed = 500.0
+		missile_turn_speed = 9.5
+		missile_burn_duration = 4.2
+		missile_burn_tick_damage = 3
+		missile_burn_tick_interval = 0.4
 
 func _get_nearest_enemy() -> Area2D:
 	var nearest: Area2D = null

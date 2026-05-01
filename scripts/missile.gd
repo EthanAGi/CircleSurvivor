@@ -8,6 +8,7 @@ extends Area2D
 @export var explosion_visual_duration: float = 0.30
 @export var direct_hit_knockback_force: float = 230.0
 @export var explosion_knockback_force: float = 260.0
+@export var is_napalm_launcher: bool = false
 
 @export var burn_duration: float = 2.5
 @export var burn_tick_damage: int = 1
@@ -52,6 +53,12 @@ func _on_area_entered(area: Area2D) -> void:
 func _explode() -> void:
 	if exploded:
 		return
+
+	if is_napalm_launcher:
+		explosion_radius *= 1.35
+		explosion_visual_duration = 0.42
+		direct_hit_knockback_force *= 1.15
+		explosion_knockback_force *= 1.20
 
 	exploded = true
 	explosion_timer = 0.0
@@ -109,6 +116,9 @@ func _explode() -> void:
 			collider.take_damage(damage, explosion_direction, explosion_knockback_force)
 			_apply_burn_to_target(collider)
 
+	if is_napalm_launcher:
+		_apply_napalm_burn_wave()
+
 	current_explosion_draw_radius = explosion_radius
 	queue_redraw()
 
@@ -118,6 +128,29 @@ func _apply_burn_to_target(target_node: Node) -> void:
 
 	if target_node.has_method("apply_burn"):
 		target_node.apply_burn(burn_duration, burn_tick_damage, burn_tick_interval)
+
+func _apply_napalm_burn_wave() -> void:
+	var state: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
+	var params: PhysicsShapeQueryParameters2D = PhysicsShapeQueryParameters2D.new()
+
+	var shape: CircleShape2D = CircleShape2D.new()
+	shape.radius = explosion_radius * 1.25
+
+	params.shape = shape
+	params.transform = Transform2D(0.0, global_position)
+	params.collide_with_areas = true
+	params.collide_with_bodies = false
+	params.collision_mask = 2
+
+	var results: Array[Dictionary] = state.intersect_shape(params)
+
+	for result in results:
+		var collider: Variant = result.get("collider")
+		if collider == self:
+			continue
+
+		if collider != null and collider.has_method("apply_burn"):
+			collider.apply_burn(burn_duration * 1.25, burn_tick_damage, burn_tick_interval)
 
 func _update_explosion_visual(delta: float) -> void:
 	explosion_timer += delta
@@ -139,9 +172,16 @@ func _draw() -> void:
 	if exploded:
 		var alpha_progress: float = 1.0 - clamp(explosion_timer / explosion_visual_duration, 0.0, 1.0)
 
-		draw_circle(Vector2.ZERO, current_explosion_draw_radius, Color(1.0, 0.22, 0.0, 0.24 * alpha_progress))
-		draw_arc(Vector2.ZERO, current_explosion_draw_radius, 0.0, TAU, 64, Color(1.0, 0.35, 0.0, 0.95 * alpha_progress), 3.0)
-		draw_circle(Vector2.ZERO, 5.0, Color(1.0, 0.55, 0.0, 1.0 * alpha_progress))
+		if is_napalm_launcher:
+			draw_circle(Vector2.ZERO, current_explosion_draw_radius * 1.12, Color(1.0, 0.10, 0.0, 0.22 * alpha_progress))
+			draw_circle(Vector2.ZERO, current_explosion_draw_radius * 0.70, Color(1.0, 0.48, 0.0, 0.24 * alpha_progress))
+			draw_arc(Vector2.ZERO, current_explosion_draw_radius, 0.0, TAU, 64, Color(1.0, 0.82, 0.18, 0.95 * alpha_progress), 5.0)
+			draw_arc(Vector2.ZERO, current_explosion_draw_radius * 1.25, 0.0, TAU, 64, Color(1.0, 0.25, 0.0, 0.70 * alpha_progress), 3.0)
+			draw_circle(Vector2.ZERO, 7.0, Color(1.0, 0.85, 0.20, 1.0 * alpha_progress))
+		else:
+			draw_circle(Vector2.ZERO, current_explosion_draw_radius, Color(1.0, 0.22, 0.0, 0.24 * alpha_progress))
+			draw_arc(Vector2.ZERO, current_explosion_draw_radius, 0.0, TAU, 64, Color(1.0, 0.35, 0.0, 0.95 * alpha_progress), 3.0)
+			draw_circle(Vector2.ZERO, 5.0, Color(1.0, 0.55, 0.0, 1.0 * alpha_progress))
 		return
 
 	var points: PackedVector2Array = PackedVector2Array([
