@@ -7,6 +7,7 @@ extends Area2D
 @export var hit_cooldown: float = 0.35
 @export var ball_radius: float = 10.0
 @export var knockback_force: float = 115.0
+@export var is_blade_ring: bool = false
 
 var player: Node2D = null
 var angle: float = 0.0
@@ -17,6 +18,14 @@ var hit_timers := {}
 
 func _ready() -> void:
 	area_entered.connect(_on_area_entered)
+
+	if is_blade_ring:
+		orbit_radius = 92.0
+		orbit_speed = 7.2
+		damage = 2
+		hit_cooldown = 0.18
+		ball_radius *= 1.25
+		knockback_force *= 1.25
 
 	var collision_shape: CollisionShape2D = $CollisionShape2D
 	if collision_shape != null and collision_shape.shape is CircleShape2D:
@@ -50,6 +59,9 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _on_area_entered(area: Area2D) -> void:
+	_hit_enemy(area)
+
+func _hit_enemy(area: Area2D) -> void:
 	if not area.has_method("take_damage"):
 		return
 
@@ -70,4 +82,17 @@ func _roll_damage(base_damage: int) -> int:
 	return base_damage
 
 func _draw() -> void:
+	if is_blade_ring:
+		var blade_points: PackedVector2Array = PackedVector2Array([
+			Vector2(ball_radius * 1.55, 0.0),
+			Vector2(-ball_radius * 0.35, ball_radius * 0.85),
+			Vector2(-ball_radius * 0.75, 0.0),
+			Vector2(-ball_radius * 0.35, -ball_radius * 0.85)
+		])
+
+		draw_circle(Vector2.ZERO, ball_radius * 1.2, Color(0.45, 0.85, 1.0, 0.22))
+		draw_colored_polygon(blade_points, Color(0.82, 0.95, 1.0))
+		draw_arc(Vector2.ZERO, ball_radius * 1.35, 0.0, TAU, 28, Color(0.55, 0.9, 1.0, 0.9), 2.0)
+		return
+
 	draw_circle(Vector2.ZERO, ball_radius, Color(0.9, 0.95, 1.0))

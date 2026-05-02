@@ -61,7 +61,7 @@ var pause_menu_open: bool = false
 var survival_time: float = 0.0
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
-@export var win_time: float = 180.0
+@export var win_time: float = 600.0
 
 const BULLET_MAX_LEVEL: int = 8
 const ORBIT_BALL_MAX_LEVEL: int = 5
@@ -69,6 +69,7 @@ const LIGHTNING_MAX_LEVEL: int = 5
 const MISSILE_MAX_LEVEL: int = 5
 const LIGHTNING_EVOLUTION_REQUIRED_ATTACK_SIZE_UPGRADES: int = 6
 const MISSILE_EVOLUTION_REQUIRED_PROJECTILE_SPEED_UPGRADES: int = 6
+const ORBIT_BALL_EVOLUTION_REQUIRED_SPEED_UPGRADES: int = 6
 
 const MAX_HEALTH_UPGRADES: int = 8
 const MAX_ARMOR_UPGRADES: int = 5
@@ -108,6 +109,7 @@ var missile_level: int = 0
 
 var lightning_evolved: bool = false
 var missile_evolved: bool = false
+var orbit_ball_evolved: bool = false
 
 var max_health_upgrade_count: int = 0
 var armor_upgrade_count: int = 0
@@ -533,6 +535,9 @@ func _spawn_orbit_balls() -> void:
 		orbit_ball.crit_chance = crit_chance
 		orbit_ball.knockback_force = 115.0 * attack_size_multiplier
 
+		if "is_blade_ring" in orbit_ball:
+			orbit_ball.is_blade_ring = orbit_ball_evolved
+
 func _handle_lightning_weapon(delta: float) -> void:
 	if lightning_level <= 0:
 		return
@@ -940,6 +945,13 @@ func _build_level_up_choices() -> Array[Dictionary]:
 			"rarity": RARITY_EPIC
 		})
 
+	if _can_evolve_orbit_ball():
+		pool.append({
+			"id": "evolve_orbit_ball",
+			"text": "EVOLVE Orbit Ball: Blade Ring\nRequires max Orbit Ball + max Move Speed",
+			"rarity": RARITY_EPIC
+		})
+
 	if bullet_level < BULLET_MAX_LEVEL:
 		pool.append({
 			"id": "bullet_upgrade",
@@ -1059,6 +1071,13 @@ func _can_evolve_missile() -> bool:
 		and projectile_speed_upgrade_count >= MISSILE_EVOLUTION_REQUIRED_PROJECTILE_SPEED_UPGRADES
 	)
 
+func _can_evolve_orbit_ball() -> bool:
+	return (
+		not orbit_ball_evolved
+		and orbit_ball_level >= ORBIT_BALL_MAX_LEVEL
+		and speed_upgrade_count >= ORBIT_BALL_EVOLUTION_REQUIRED_SPEED_UPGRADES
+	)
+
 func _make_rarity_choice(choice_id: String, title: String, description: String, amount: float) -> Dictionary:
 	var rarity: String = _roll_rarity()
 	return {
@@ -1161,6 +1180,12 @@ func _on_level_up_choice_pressed(index: int) -> void:
 			missile_timer = 0.1
 			_shake_screen(ELITE_SPAWN_SCREEN_SHAKE)
 
+		"evolve_orbit_ball":
+			orbit_ball_evolved = true
+			_apply_orbit_ball_upgrade_stats()
+			orbit_ball_timer = 0.1
+			_shake_screen(ELITE_SPAWN_SCREEN_SHAKE)
+
 		"max_health_upgrade":
 			max_health_upgrade_count += 1
 			player.increase_max_health(1)
@@ -1237,6 +1262,11 @@ func _apply_orbit_ball_upgrade_stats() -> void:
 			orbit_ball_cooldown = 1.6
 			orbit_ball_duration = 3.2
 			orbit_ball_count = 2
+
+	if orbit_ball_evolved:
+		orbit_ball_cooldown = 1.15
+		orbit_ball_duration = 5.0
+		orbit_ball_count = 4
 
 func _apply_lightning_upgrade_stats() -> void:
 	match lightning_level:
