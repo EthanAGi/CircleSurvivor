@@ -17,6 +17,8 @@ extends Area2D
 var direction: Vector2 = Vector2.RIGHT
 var target: Area2D = null
 var exploded: bool = false
+var crit_chance: float = 0.0
+var crit_effects_owner: Node = null
 
 var explosion_timer: float = 0.0
 var current_explosion_draw_radius: float = 0.0
@@ -82,8 +84,16 @@ func _explode() -> void:
 			if direct_direction == Vector2.ZERO:
 				direct_direction = direction.normalized()
 
-			area.take_damage(damage, direct_direction, direct_hit_knockback_force)
+			var direct_damage_result: Dictionary = _roll_damage_result(damage)
+			var direct_damage: int = int(direct_damage_result["damage"])
+			var direct_is_crit: bool = bool(direct_damage_result["is_crit"])
+
+			area.take_damage(direct_damage, direct_direction, direct_hit_knockback_force)
 			_apply_burn_to_target(area)
+
+			if direct_is_crit and crit_effects_owner != null and crit_effects_owner.has_method("trigger_player_crit_effects"):
+				crit_effects_owner.trigger_player_crit_effects(area, global_position, direct_damage, direct_direction)
+
 			damaged_targets.append(area)
 
 	var state: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
@@ -113,8 +123,15 @@ func _explode() -> void:
 			if explosion_direction == Vector2.ZERO:
 				explosion_direction = direction.normalized()
 
-			collider.take_damage(damage, explosion_direction, explosion_knockback_force)
+			var explosion_damage_result: Dictionary = _roll_damage_result(damage)
+			var final_explosion_damage: int = int(explosion_damage_result["damage"])
+			var explosion_is_crit: bool = bool(explosion_damage_result["is_crit"])
+
+			collider.take_damage(final_explosion_damage, explosion_direction, explosion_knockback_force)
 			_apply_burn_to_target(collider)
+
+			if explosion_is_crit and crit_effects_owner != null and crit_effects_owner.has_method("trigger_player_crit_effects"):
+				crit_effects_owner.trigger_player_crit_effects(collider, collider.global_position, final_explosion_damage, explosion_direction)
 
 	if is_napalm_launcher:
 		_apply_napalm_burn_wave()
@@ -151,6 +168,18 @@ func _apply_napalm_burn_wave() -> void:
 
 		if collider != null and collider.has_method("apply_burn"):
 			collider.apply_burn(burn_duration * 1.25, burn_tick_damage, burn_tick_interval)
+
+func _roll_damage_result(base_damage: int) -> Dictionary:
+	var is_crit: bool = randf() < crit_chance
+	var final_damage: int = base_damage
+
+	if is_crit:
+		final_damage = base_damage * 2
+
+	return {
+		"damage": final_damage,
+		"is_crit": is_crit
+	}
 
 func _update_explosion_visual(delta: float) -> void:
 	explosion_timer += delta

@@ -81,6 +81,18 @@ const MAX_PROJECTILE_SPEED_UPGRADES: int = 6
 const MAX_ATTACK_SIZE_UPGRADES: int = 6
 const MAX_CRIT_CHANCE_UPGRADES: int = 6
 
+const CRIT_EXPLOSION_RADIUS: float = 95.0
+const CRIT_EXPLOSION_DAMAGE: int = 1
+const CRIT_EXPLOSION_KNOCKBACK: float = 220.0
+const CRIT_BURN_DURATION: float = 2.0
+const CRIT_BURN_TICK_DAMAGE: int = 1
+const CRIT_BURN_TICK_INTERVAL: float = 0.5
+const CRIT_SHOCK_DURATION: float = 1.5
+const CRIT_SHOCK_TICK_DAMAGE: int = 1
+const CRIT_SHOCK_TICK_INTERVAL: float = 0.45
+const CRIT_SHOCK_CHAIN_RADIUS: float = 115.0
+const CRIT_SHOCK_CHAIN_DAMAGE: int = 1
+
 const RARITY_COMMON: String = "Common"
 const RARITY_RARE: String = "Rare"
 const RARITY_EPIC: String = "Epic"
@@ -123,6 +135,10 @@ var crit_chance_upgrade_count: int = 0
 var projectile_speed_multiplier: float = 1.0
 var attack_size_multiplier: float = 1.0
 var crit_chance: float = 0.0
+
+var crit_explosion_unlocked: bool = false
+var crit_burn_unlocked: bool = false
+var crit_shock_unlocked: bool = false
 
 var orbit_ball_cooldown: float = 99999.0
 var orbit_ball_duration: float = 0.0
@@ -533,6 +549,8 @@ func _spawn_orbit_balls() -> void:
 		orbit_ball.ball_radius = 10.0 * attack_size_multiplier
 		orbit_ball.damage = 1
 		orbit_ball.crit_chance = crit_chance
+		if "crit_effects_owner" in orbit_ball:
+			orbit_ball.crit_effects_owner = self
 		orbit_ball.knockback_force = 115.0 * attack_size_multiplier
 
 		if "is_blade_ring" in orbit_ball:
@@ -569,7 +587,9 @@ func _fire_lightning_weapon() -> void:
 		already_struck_enemies.append(enemy)
 
 		var strike_position: Vector2 = enemy.global_position
-		var strike_damage: int = _roll_damage(lightning_damage)
+		var damage_result: Dictionary = _roll_damage_result(lightning_damage)
+		var strike_damage: int = int(damage_result["damage"])
+		var strike_is_crit: bool = bool(damage_result["is_crit"])
 		var scaled_aoe_radius: float = lightning_aoe_radius * attack_size_multiplier
 
 		var lightning: Node = lightning_scene.instantiate()
@@ -579,6 +599,9 @@ func _fire_lightning_weapon() -> void:
 		lightning.strike_radius = scaled_aoe_radius
 
 		_damage_lightning_aoe(strike_position, scaled_aoe_radius, strike_damage)
+
+		if strike_is_crit:
+			trigger_player_crit_effects(enemy, strike_position, strike_damage, Vector2.ZERO)
 
 func _damage_lightning_aoe(strike_position: Vector2, aoe_radius: float, strike_damage: int) -> void:
 	var damaged_enemies: Array[Area2D] = []
@@ -657,7 +680,11 @@ func _spawn_player_missile(target: Area2D, angle_offset: float = 0.0) -> void:
 	missile.target = target
 	missile.speed = missile_speed * projectile_speed_multiplier
 	missile.turn_speed = missile_turn_speed
-	missile.damage = _roll_damage(missile_damage)
+	missile.damage = missile_damage
+	if "crit_chance" in missile:
+		missile.crit_chance = crit_chance
+	if "crit_effects_owner" in missile:
+		missile.crit_effects_owner = self
 	missile.explosion_radius = 70.0 * attack_size_multiplier
 	missile.direct_hit_knockback_force = 230.0 * attack_size_multiplier
 	missile.explosion_knockback_force = 260.0 * attack_size_multiplier
@@ -797,7 +824,12 @@ func _on_player_shoot_requested(spawn_position: Vector2) -> void:
 	bullet.global_position = spawn_position
 	bullet.direction = (target.global_position - spawn_position).normalized()
 	bullet.speed = 500.0 * projectile_speed_multiplier
-	bullet.damage = _roll_damage(1)
+	var damage_result: Dictionary = _roll_damage_result(1)
+	bullet.damage = int(damage_result["damage"])
+	if "is_crit" in bullet:
+		bullet.is_crit = bool(damage_result["is_crit"])
+	if "crit_effects_owner" in bullet:
+		bullet.crit_effects_owner = self
 	bullet.radius = 8.0 * attack_size_multiplier
 	bullet.knockback_force = 170.0 * attack_size_multiplier
 
@@ -989,6 +1021,27 @@ func _build_level_up_choices() -> Array[Dictionary]:
 		pool.append({
 			"id": "missile_upgrade",
 			"text": "Upgrade Homing Missile\nFaster reload, more damage, and stronger burns"
+		})
+
+	if missile_level > 0 and not crit_explosion_unlocked:
+		pool.append({
+			"id": "unlock_crit_explosion",
+			"text": "Missile Crit Synergy: Explosive Crits\nAll player crits create a small AOE blast",
+			"rarity": RARITY_RARE
+		})
+
+	if missile_level > 0 and not crit_burn_unlocked:
+		pool.append({
+			"id": "unlock_crit_burn",
+			"text": "Missile Crit Synergy: Burning Crits\nAll player crits ignite enemies",
+			"rarity": RARITY_RARE
+		})
+
+	if lightning_level > 0 and not crit_shock_unlocked:
+		pool.append({
+			"id": "unlock_crit_shock",
+			"text": "Lightning Crit Synergy: Shocking Crits\nAll player crits shock and chain to enemies",
+			"rarity": RARITY_RARE
 		})
 
 	if max_health_upgrade_count < MAX_HEALTH_UPGRADES:
@@ -1184,6 +1237,18 @@ func _on_level_up_choice_pressed(index: int) -> void:
 			orbit_ball_evolved = true
 			_apply_orbit_ball_upgrade_stats()
 			orbit_ball_timer = 0.1
+			_shake_screen(ELITE_SPAWN_SCREEN_SHAKE)
+
+		"unlock_crit_explosion":
+			crit_explosion_unlocked = true
+			_shake_screen(ELITE_SPAWN_SCREEN_SHAKE)
+
+		"unlock_crit_burn":
+			crit_burn_unlocked = true
+			_shake_screen(ELITE_SPAWN_SCREEN_SHAKE)
+
+		"unlock_crit_shock":
+			crit_shock_unlocked = true
 			_shake_screen(ELITE_SPAWN_SCREEN_SHAKE)
 
 		"max_health_upgrade":
@@ -1538,6 +1603,122 @@ func _find_first_existing_node(paths: Array[String]) -> Node:
 	return null
 
 func _roll_damage(base_damage: int) -> int:
-	if rng.randf() < crit_chance:
-		return base_damage * 2
-	return base_damage
+	var damage_result: Dictionary = _roll_damage_result(base_damage)
+	return int(damage_result["damage"])
+
+func _roll_damage_result(base_damage: int) -> Dictionary:
+	var is_crit: bool = rng.randf() < crit_chance
+	var final_damage: int = base_damage
+
+	if is_crit:
+		final_damage = base_damage * 2
+
+	return {
+		"damage": final_damage,
+		"is_crit": is_crit
+	}
+
+func trigger_player_crit_effects(target: Node, hit_position: Vector2, source_damage: int = 1, knockback_direction: Vector2 = Vector2.ZERO) -> void:
+	if game_over:
+		return
+
+	if not crit_explosion_unlocked and not crit_burn_unlocked and not crit_shock_unlocked:
+		return
+
+	if crit_burn_unlocked:
+		_apply_crit_burn(target)
+
+	if crit_shock_unlocked:
+		_apply_crit_shock(target)
+
+	if crit_explosion_unlocked:
+		_trigger_crit_explosion(hit_position, target, source_damage, knockback_direction)
+
+func _apply_crit_burn(target: Node) -> void:
+	if target == null or not is_instance_valid(target):
+		return
+
+	if target.has_method("apply_burn"):
+		target.apply_burn(
+			CRIT_BURN_DURATION,
+			CRIT_BURN_TICK_DAMAGE,
+			CRIT_BURN_TICK_INTERVAL
+		)
+
+func _apply_crit_shock(target: Node) -> void:
+	if target == null or not is_instance_valid(target):
+		return
+
+	if target.has_method("apply_shock"):
+		target.apply_shock(
+			CRIT_SHOCK_DURATION,
+			CRIT_SHOCK_TICK_DAMAGE,
+			CRIT_SHOCK_TICK_INTERVAL,
+			CRIT_SHOCK_CHAIN_RADIUS * attack_size_multiplier,
+			CRIT_SHOCK_CHAIN_DAMAGE,
+			true
+		)
+
+func _trigger_crit_explosion(hit_position: Vector2, primary_target: Node, source_damage: int, knockback_direction: Vector2) -> void:
+	var explosion_radius: float = CRIT_EXPLOSION_RADIUS * attack_size_multiplier
+	var explosion_damage: int = max(CRIT_EXPLOSION_DAMAGE, int(ceil(float(source_damage) * 0.35)))
+
+	_spawn_crit_explosion_visual(hit_position, explosion_radius)
+	_shake_screen(ENEMY_HIT_SCREEN_SHAKE + 3.0)
+
+	var state: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
+	var params: PhysicsShapeQueryParameters2D = PhysicsShapeQueryParameters2D.new()
+	var shape: CircleShape2D = CircleShape2D.new()
+	shape.radius = explosion_radius
+
+	params.shape = shape
+	params.transform = Transform2D(0.0, hit_position)
+	params.collide_with_areas = true
+	params.collide_with_bodies = false
+	params.collision_mask = 2
+
+	var damaged_targets: Array[Node] = []
+	if primary_target != null:
+		damaged_targets.append(primary_target)
+
+	var results: Array[Dictionary] = state.intersect_shape(params)
+	for result in results:
+		var collider: Variant = result.get("collider")
+		if collider == null:
+			continue
+
+		if collider in damaged_targets:
+			continue
+
+		if not (collider is Node):
+			continue
+
+		var target_node: Node = collider as Node
+		if not target_node.has_method("take_damage"):
+			continue
+
+		var explosion_direction: Vector2 = (target_node.global_position - hit_position).normalized()
+		if explosion_direction == Vector2.ZERO:
+			explosion_direction = knockback_direction.normalized()
+		if explosion_direction == Vector2.ZERO:
+			explosion_direction = Vector2.RIGHT
+
+		target_node.take_damage(
+			explosion_damage,
+			explosion_direction,
+			CRIT_EXPLOSION_KNOCKBACK * attack_size_multiplier
+		)
+
+		damaged_targets.append(target_node)
+
+func _spawn_crit_explosion_visual(hit_position: Vector2, explosion_radius: float) -> void:
+	if lightning_scene == null:
+		return
+
+	var visual: Node = lightning_scene.instantiate()
+	visual.process_mode = Node.PROCESS_MODE_PAUSABLE
+	add_child(visual)
+	visual.global_position = hit_position
+
+	if "strike_radius" in visual:
+		visual.strike_radius = explosion_radius

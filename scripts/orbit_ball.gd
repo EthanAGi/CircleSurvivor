@@ -1,98 +1,71 @@
 extends Area2D
 
-@export var orbit_radius: float = 80.0
-@export var orbit_speed: float = 4.0
-@export var damage: int = 1
-@export var lifetime: float = 2.0
-@export var hit_cooldown: float = 0.35
-@export var ball_radius: float = 10.0
-@export var knockback_force: float = 115.0
-@export var is_blade_ring: bool = false
-
-var player: Node2D = null
+var player: Node2D
 var angle: float = 0.0
 var angle_offset: float = 0.0
-var crit_chance: float = 0.0
+var radius: float = 60.0
 
-var hit_timers := {}
+var rotation_speed: float = 3.5
+var lifetime: float = 2.0
+var timer: float = 0.0
+
+var damage: int = 1
+var crit_chance: float = 0.0
+var knockback_force: float = 120.0
+
+var ball_radius: float = 10.0
+var is_blade_ring: bool = false
+
+# 🔥 NEW: Reference to main for crit effects
+var main: Node = null
 
 func _ready() -> void:
-	area_entered.connect(_on_area_entered)
+	timer = lifetime
 
-	if is_blade_ring:
-		orbit_radius = 92.0
-		orbit_speed = 7.2
-		damage = 2
-		hit_cooldown = 0.18
-		ball_radius *= 1.25
-		knockback_force *= 1.25
-
-	var collision_shape: CollisionShape2D = $CollisionShape2D
-	if collision_shape != null and collision_shape.shape is CircleShape2D:
-		var circle_shape: CircleShape2D = collision_shape.shape as CircleShape2D
-		circle_shape.radius = ball_radius
-
-	queue_redraw()
+	# Try to find main automatically if not set
+	if main == null:
+		main = get_tree().get_root().get_node_or_null("Main")
 
 func _process(delta: float) -> void:
 	if player == null or not is_instance_valid(player):
 		queue_free()
 		return
 
-	angle += orbit_speed * delta
-	global_position = player.global_position + Vector2.RIGHT.rotated(angle + angle_offset) * orbit_radius
-
-	lifetime -= delta
-	if lifetime <= 0.0:
+	timer -= delta
+	if timer <= 0.0:
 		queue_free()
 		return
 
-	var expired_keys: Array = []
-	for key in hit_timers.keys():
-		hit_timers[key] -= delta
-		if hit_timers[key] <= 0.0:
-			expired_keys.append(key)
+	angle += rotation_speed * delta
+	var final_angle: float = angle + angle_offset
 
-	for key in expired_keys:
-		hit_timers.erase(key)
+	var offset: Vector2 = Vector2.RIGHT.rotated(final_angle) * radius
+	global_position = player.global_position + offset
 
-	queue_redraw()
+func _on_body_entered(body: Node) -> void:
+	if body == player:
+		return
+
+	if not body.has_method("take_damage"):
+		return
+
+	# Roll damage + crit
+	var is_crit: bool = randf() < crit_chance
+	var final_damage: int = damage
+
+	if is_crit:
+		final_damage *= 2
+
+	body.take_damage(final_damage)
+
+	# Apply knockback if available
+	if body.has_method("apply_knockback"):
+		var direction: Vector2 = (body.global_position - global_position).normalized()
+		body.apply_knockback(direction * knockback_force)
+
+	# 🔥 NEW: Trigger global crit effects
+	if is_crit and main != null and main.has_method("trigger_crit_effect"):
+		main.trigger_crit_effect(body)
 
 func _on_area_entered(area: Area2D) -> void:
-	_hit_enemy(area)
-
-func _hit_enemy(area: Area2D) -> void:
-	if not area.has_method("take_damage"):
-		return
-
-	var id = area.get_instance_id()
-	if hit_timers.has(id):
-		return
-
-	var knockback_direction: Vector2 = (area.global_position - player.global_position).normalized()
-	if knockback_direction == Vector2.ZERO:
-		knockback_direction = (area.global_position - global_position).normalized()
-
-	area.take_damage(_roll_damage(damage), knockback_direction, knockback_force)
-	hit_timers[id] = hit_cooldown
-
-func _roll_damage(base_damage: int) -> int:
-	if randf() < crit_chance:
-		return base_damage * 2
-	return base_damage
-
-func _draw() -> void:
-	if is_blade_ring:
-		var blade_points: PackedVector2Array = PackedVector2Array([
-			Vector2(ball_radius * 1.55, 0.0),
-			Vector2(-ball_radius * 0.35, ball_radius * 0.85),
-			Vector2(-ball_radius * 0.75, 0.0),
-			Vector2(-ball_radius * 0.35, -ball_radius * 0.85)
-		])
-
-		draw_circle(Vector2.ZERO, ball_radius * 1.2, Color(0.45, 0.85, 1.0, 0.22))
-		draw_colored_polygon(blade_points, Color(0.82, 0.95, 1.0))
-		draw_arc(Vector2.ZERO, ball_radius * 1.35, 0.0, TAU, 28, Color(0.55, 0.9, 1.0, 0.9), 2.0)
-		return
-
-	draw_circle(Vector2.ZERO, ball_radius, Color(0.9, 0.95, 1.0))
+	_on_body_entered(area)
