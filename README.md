@@ -1,79 +1,101 @@
 # CircleSurvivor
 
-A fast-paced survival game built in Godot, where you fight off endless waves of enemies, level up, and build powerful combinations to stay alive as long as possible.
+A fast-paced, systems-driven survival game built in Godot.  
+Fight through escalating enemy waves, construct powerful builds, and master layered combat mechanics to survive as long as possible.
 
 ---
 
 ## Overview
 
-CircleSurvivor is a top-down survival game inspired by roguelike and bullet-heaven mechanics.  
-You control a character in an arena, defeat enemies, collect experience, and evolve your build through upgrades.
+CircleSurvivor is a top-down survival experience inspired by roguelike and bullet-heaven design, with a focus on mechanical depth, responsive controls, and build experimentation.
 
-The goal is simple: survive as long as possible.
-
----
-
-## Features
-
-### Core Gameplay
-- Endless enemy waves that scale over time
-- Smooth player movement and combat
-- Multiple attack types:
-  - Bullets
-  - Homing Missiles
-  - Lightning Strikes
-  - Orbiting Projectiles
+Players are placed in an arena where enemies continuously evolve in difficulty. Through combat, you collect experience, level up, and shape your build using randomized upgrade choices. Success depends on positioning, decision-making, and synergy between abilities.
 
 ---
 
-### Progression System
-- Experience pickups from defeated enemies
-- Level-up system with upgrade choices
-- Randomized upgrade selection each level
-- Skip button for faster gameplay flow
+## Key Features
+
+### Combat System
+- Responsive, physics-based player movement
+- Multi-weapon combat system with distinct behaviors:
+  - **Projectile Bullets** (rapid, consistent damage)
+  - **Homing Missiles** (target tracking with explosion effects)
+  - **Lightning Strikes** (instant hits with area-of-effect chaining)
+  - **Orbiting Projectiles** (persistent defensive/offensive zone)
+- Status-based combat interactions:
+  - Burn effects (damage over time)
+  - Shock effects (enhanced damage behavior)
+- Area-of-effect damage systems for explosive and lightning attacks
 
 ---
 
-### Combat Feedback
-- Floating damage numbers
-  - Different colors for player vs enemy damage
-- Visual clarity for attacks and hits
-- Enemy health indicated via color (no health bars)
+### Enemy Design
+- Multiple enemy types with distinct behaviors
+- Projectile-based enemy attacks
+- Scaling difficulty over time
+- **Elite enemy system**:
+  - Spawns at timed intervals
+  - Increased durability and threat level
+  - Forces adaptation in player strategy
 
 ---
 
-### Enemies
-- Multiple enemy types
-- Increasing difficulty over time
-- Enemy projectiles and varied behaviors
+### Progression & Build System
+- Experience pickups with attraction and collection mechanics
+- Fully implemented leveling system
+- Randomized upgrade selection per level
+- Upgrade skipping for faster pacing
+- Build-focused gameplay encouraging synergy between weapons and effects
 
 ---
 
-### UI and UX
-- Fully navigable menus:
+### Combat Feedback & Polish
+- Floating damage numbers system:
+  - Separate visual styles for player vs enemy damage
+- Camera shake system on player damage
+- Visual clarity for hit detection and attack feedback
+- Enemy health represented through color (no UI clutter)
+
+---
+
+### Player Systems
+- Temporary invulnerability after taking damage
+- Visual feedback during invulnerability (sprite flashing)
+- Health and damage handling systems
+- Responsive input handling for both gameplay and UI
+
+---
+
+### UI & UX Systems
+- Fully navigable UI using:
   - Keyboard (W/S or Arrow Keys)
-  - Mouse support
-- Main Menu
-- Character Select
-- Level Select
-- Pause Menu
-- Level-up selection interface
+  - Mouse
+- Focus-based menu navigation system
+- Complete menu flow:
+  - Main Menu
+  - Character Select
+  - Level Select
+  - Options Menu
+  - Pause Menu
+- Level-up selection interface with input support
+- Restart and game-over flow
 
 ---
 
-### Game Systems
-- Pause menu functionality
-- Restart system
-- Game over handling
-- Timer-based progression
+### Core Game Systems
+- Enemy spawning system with scaling intensity
+- Timer-based progression and difficulty ramping
+- Modular weapon system
+- Damage calculation and status handling systems
+- Scene-based architecture for clean system separation
 
 ---
 
 ## Tech Stack
 
-- Engine: Godot
-- Language: GDScript
-- Architecture: Scene-based modular design
+- **Engine:** Godot  
+- **Language:** GDScript  
+- **Architecture:** Scene-based modular design  
 
 ---
 
@@ -91,23 +113,30 @@ The goal is simple: survive as long as possible.
 ## Current Systems Implemented
 
 - Player combat system
-- Enemy spawning system
+- Enemy AI and spawning system
+- Elite enemy system
+- Multiple weapon types with unique behaviors
+- Status effects (burn and shock)
 - EXP and leveling system
-- Upgrade selection system
-- Multiple weapon types
+- Upgrade selection and skip system
 - Damage number system
-- Menu navigation (keyboard and mouse)
+- Camera feedback system
+- Full UI navigation system (keyboard + mouse)
+- Menu system (main, level select, character select, options)
 - Pause and restart systems
+- Game over handling
 
 ---
 
 ## Planned Features
 
-- More weapons and upgrade paths
-- Boss enemies
-- Sound effects and music
-- Visual polish (particles, animations)
-- Save system or meta progression
+- Boss encounters with unique mechanics
+- Expanded weapon and upgrade trees
+- Audio design (sound effects and music)
+- Visual polish (particles, animations, screen effects)
+- Meta progression / persistent upgrades
+- Save system
+- Additional enemy archetypes
 
 ---
 
@@ -120,11 +149,11 @@ Game Developer
 
 ## Notes
 
-This project is actively being developed as part of ongoing game development work and iteration.  
-Feedback and suggestions are welcome.
+This project is actively being developed with a focus on continuous iteration, system expansion, and gameplay polish.  
+It serves as both a technical showcase and an evolving game project.
 
 ---
 
 ## If you like the project
 
-Consider giving it a star on GitHub and following development.
+Consider starring the repository and following development.
