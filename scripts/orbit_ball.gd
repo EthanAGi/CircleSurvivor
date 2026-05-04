@@ -68,4 +68,6 @@ func _on_body_entered(body: Node) -> void:
 		main.trigger_crit_effect(body)
 
 func _on_area_entered(area: Area2D) -> void:
-	_on_body_entered(area)
+	_on_body_entered(area) 
+	
+	# Not sure why git not working
