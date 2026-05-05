@@ -1,93 +1,104 @@
 # CircleSurvivor
 
-A fast-paced, systems-driven survival game built in Godot.  
-Fight through escalating enemy waves, construct powerful builds, and master layered combat mechanics to survive as long as possible.
+A fast-paced survival game where every second matters.  
+Fight off relentless enemy waves, evolve your build through powerful upgrades, and push your limits to survive as long as possible.
 
 ---
 
-## Overview
+## What is CircleSurvivor?
 
-CircleSurvivor is a top-down survival experience inspired by roguelike and bullet-heaven design, with a focus on mechanical depth, responsive controls, and build experimentation.
+CircleSurvivor is a top-down survival game inspired by roguelike and bullet-heaven gameplay.
 
-Players are placed in an arena where enemies continuously evolve in difficulty. Through combat, you collect experience, level up, and shape your build using randomized upgrade choices. Success depends on positioning, decision-making, and synergy between abilities.
+You are dropped into an arena with one goal: **stay alive**.
 
----
+Enemies spawn endlessly and grow stronger over time. As you defeat them, you gain experience, level up, and choose upgrades that shape your playstyle. Every run becomes a unique build, driven by your decisions and the synergies you create.
 
-## Key Features
-
-### Combat System
-- Responsive, physics-based player movement
-- Multi-weapon combat system with distinct behaviors:
-  - **Projectile Bullets** (rapid, consistent damage)
-  - **Homing Missiles** (target tracking with explosion effects)
-  - **Lightning Strikes** (instant hits with area-of-effect chaining)
-  - **Orbiting Projectiles** (persistent defensive/offensive zone)
-- Status-based combat interactions:
-  - Burn effects (damage over time)
-  - Shock effects (enhanced damage behavior)
-- Area-of-effect damage systems for explosive and lightning attacks
+Victory isn’t about winning — it’s about lasting longer than your last attempt.
 
 ---
 
-### Enemy Design
-- Multiple enemy types with distinct behaviors
-- Projectile-based enemy attacks
-- Scaling difficulty over time
-- **Elite enemy system**:
-  - Spawns at timed intervals
-  - Increased durability and threat level
-  - Forces adaptation in player strategy
+## Core Gameplay Loop
+
+1. Survive against continuous enemy waves  
+2. Defeat enemies to gain experience  
+3. Level up and choose upgrades  
+4. Build powerful synergies  
+5. Adapt as difficulty increases  
+6. Repeat until overwhelmed  
 
 ---
 
-### Progression & Build System
-- Experience pickups with attraction and collection mechanics
-- Fully implemented leveling system
-- Randomized upgrade selection per level
-- Upgrade skipping for faster pacing
-- Build-focused gameplay encouraging synergy between weapons and effects
+## Features
+
+### Combat
+- Smooth and responsive movement
+- Multiple weapon types with distinct roles:
+  - **Bullets** – consistent, rapid-fire damage
+  - **Missiles** – homing attacks with explosive impact
+  - **Lightning** – instant strikes with chaining damage
+  - **Orbitals** – rotating defenses that damage nearby enemies
+- Area-of-effect damage and chain reactions
+- Status effects:
+  - **Burn** – damage over time
+  - **Shock** – enhanced damage interactions
 
 ---
 
-### Combat Feedback & Polish
-- Floating damage numbers system:
-  - Separate visual styles for player vs enemy damage
-- Camera shake system on player damage
-- Visual clarity for hit detection and attack feedback
-- Enemy health represented through color (no UI clutter)
+### Enemies
+- Variety of enemy behaviors and movement patterns
+- Ranged enemies with projectile attacks
+- Scaling difficulty that increases pressure over time
+- **Elite enemies**:
+  - Spawn at intervals
+  - Stronger, faster, and more dangerous
+  - Force changes in positioning and strategy
+
+---
+
+### Progression
+- Experience drops from defeated enemies
+- Level-up system with randomized upgrade choices
+- Skip option for faster pacing
+- Build-focused design encouraging synergy between weapons and effects
 
 ---
 
 ### Player Systems
-- Temporary invulnerability after taking damage
-- Visual feedback during invulnerability (sprite flashing)
-- Health and damage handling systems
-- Responsive input handling for both gameplay and UI
+- Health and damage handling
+- Brief invulnerability after taking damage
+- Visual feedback during invulnerability (flashing effect)
+- Responsive controls for both gameplay and UI
 
 ---
 
-### UI & UX Systems
-- Fully navigable UI using:
-  - Keyboard (W/S or Arrow Keys)
-  - Mouse
-- Focus-based menu navigation system
-- Complete menu flow:
+### Feedback & Feel
+- Floating damage numbers
+  - Different visuals for player vs enemy damage
+- Camera shake when taking damage
+- Clear visual feedback for hits and effects
+- Enemy health represented through color instead of UI bars
+
+---
+
+### UI & Menus
+- Fully navigable with keyboard and mouse
+- Clean menu flow:
   - Main Menu
   - Character Select
   - Level Select
-  - Options Menu
+  - Options
   - Pause Menu
-- Level-up selection interface with input support
-- Restart and game-over flow
+- Level-up selection interface with full input support
+- Game over and restart systems
 
 ---
 
-### Core Game Systems
-- Enemy spawning system with scaling intensity
-- Timer-based progression and difficulty ramping
+### Systems & Architecture
+- Scalable enemy spawning system
+- Time-based difficulty ramping
 - Modular weapon system
-- Damage calculation and status handling systems
-- Scene-based architecture for clean system separation
+- Status effect and damage systems
+- Scene-based structure for clean, maintainable code
 
 ---
 
@@ -110,33 +121,31 @@ Players are placed in an arena where enemies continuously evolve in difficulty. 
 
 ---
 
-## Current Systems Implemented
+## Current State
 
-- Player combat system
-- Enemy AI and spawning system
-- Elite enemy system
-- Multiple weapon types with unique behaviors
-- Status effects (burn and shock)
-- EXP and leveling system
-- Upgrade selection and skip system
-- Damage number system
-- Camera feedback system
-- Full UI navigation system (keyboard + mouse)
-- Menu system (main, level select, character select, options)
-- Pause and restart systems
-- Game over handling
+CircleSurvivor is fully playable and includes:
+
+- Core combat systems
+- Multiple weapon types
+- Enemy AI and spawning
+- Elite enemies
+- Status effects
+- Leveling and upgrades
+- Damage feedback systems
+- Full UI navigation and menus
+- Pause and restart functionality
 
 ---
 
 ## Planned Features
 
-- Boss encounters with unique mechanics
-- Expanded weapon and upgrade trees
-- Audio design (sound effects and music)
-- Visual polish (particles, animations, screen effects)
-- Meta progression / persistent upgrades
-- Save system
-- Additional enemy archetypes
+- Boss fights with unique mechanics
+- Expanded upgrade and weapon systems
+- Audio (sound effects and music)
+- Visual polish (particles, animations, effects)
+- Meta progression systems
+- Save/load functionality
+- More enemy types and behaviors
 
 ---
 
@@ -147,13 +156,17 @@ Game Developer
 
 ---
 
-## Notes
+## About This Project
 
-This project is actively being developed with a focus on continuous iteration, system expansion, and gameplay polish.  
-It serves as both a technical showcase and an evolving game project.
+CircleSurvivor is an actively developed project focused on:
+- Expanding gameplay depth
+- Improving system design
+- Delivering satisfying combat feedback
+
+It serves both as a playable game and a demonstration of game system design and implementation.
 
 ---
 
-## If you like the project
+## Support the Project
 
-Consider starring the repository and following development.
+If you enjoy the project, consider starring the repository and following its development.
