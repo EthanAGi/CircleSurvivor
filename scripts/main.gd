@@ -76,6 +76,13 @@ const MAX_ARMOR_UPGRADES: int = 5
 const MAX_SPEED_UPGRADES: int = 6
 const MAX_FIRE_RATE_UPGRADES: int = 6
 const MAX_PICKUP_RADIUS_UPGRADES: int = 6
+const MAX_VACUUM_PULSE_UPGRADES: int = 4
+
+const VACUUM_PULSE_BASE_COOLDOWN: float = 12.0
+const VACUUM_PULSE_COOLDOWN_REDUCTION_PER_UPGRADE: float = 2.0
+const VACUUM_PULSE_MIN_COOLDOWN: float = 5.0
+const VACUUM_PULSE_MAX_RANGE: float = 1400.0
+const VACUUM_PULSE_SCREEN_SHAKE: float = 5.0
 
 const MAX_PROJECTILE_SPEED_UPGRADES: int = 6
 const MAX_ATTACK_SIZE_UPGRADES: int = 6
@@ -128,6 +135,7 @@ var armor_upgrade_count: int = 0
 var speed_upgrade_count: int = 0
 var fire_rate_upgrade_count: int = 0
 var pickup_radius_upgrade_count: int = 0
+var vacuum_pulse_upgrade_count: int = 0
 var projectile_speed_upgrade_count: int = 0
 var attack_size_upgrade_count: int = 0
 var crit_chance_upgrade_count: int = 0
@@ -139,6 +147,10 @@ var crit_chance: float = 0.0
 var crit_explosion_unlocked: bool = false
 var crit_burn_unlocked: bool = false
 var crit_shock_unlocked: bool = false
+
+var vacuum_pulse_unlocked: bool = false
+var vacuum_pulse_cooldown: float = VACUUM_PULSE_BASE_COOLDOWN
+var vacuum_pulse_timer: float = 0.0
 
 var orbit_ball_cooldown: float = 99999.0
 var orbit_ball_duration: float = 0.0
@@ -305,6 +317,7 @@ func _process(delta: float) -> void:
 	_handle_orbit_ball_weapon(delta)
 	_handle_lightning_weapon(delta)
 	_handle_missile_weapon(delta)
+	_handle_vacuum_pulse(delta)
 
 	queue_redraw()
 
@@ -527,6 +540,75 @@ func _show_elite_warning() -> void:
 	)
 
 	_shake_screen(ELITE_SPAWN_SCREEN_SHAKE)
+
+func _handle_vacuum_pulse(delta: float) -> void:
+	if not vacuum_pulse_unlocked:
+		return
+
+	vacuum_pulse_timer -= delta
+
+	if vacuum_pulse_timer <= 0.0:
+		vacuum_pulse_timer = vacuum_pulse_cooldown
+		_trigger_vacuum_pulse()
+
+func _trigger_vacuum_pulse() -> void:
+	if player == null or not is_instance_valid(player):
+		return
+
+	var pulled_count: int = 0
+
+	for child in get_children():
+		if not (child is Area2D):
+			continue
+
+		if not is_instance_valid(child):
+			continue
+
+		if not child.scene_file_path.ends_with("exp_pickup.tscn"):
+			continue
+
+		var exp_pickup: Area2D = child as Area2D
+		var distance: float = player.global_position.distance_to(exp_pickup.global_position)
+
+		if distance > VACUUM_PULSE_MAX_RANGE:
+			continue
+
+		if "is_collecting" in exp_pickup:
+			exp_pickup.is_collecting = true
+			pulled_count += 1
+
+	if pulled_count > 0:
+		_spawn_vacuum_pulse_visual()
+		_shake_screen(VACUUM_PULSE_SCREEN_SHAKE)
+
+func _spawn_vacuum_pulse_visual() -> void:
+	if player == null or not is_instance_valid(player):
+		return
+
+	var pulse: Node2D = Node2D.new()
+	pulse.name = "VacuumPulseVisual"
+	pulse.process_mode = Node.PROCESS_MODE_PAUSABLE
+	pulse.z_index = 20
+	add_child(pulse)
+	pulse.global_position = player.global_position
+
+	pulse.draw.connect(func() -> void:
+		pulse.draw_arc(Vector2.ZERO, 24.0, 0.0, TAU, 72, Color(0.45, 0.95, 1.0, 0.95), 4.0)
+		pulse.draw_arc(Vector2.ZERO, 46.0, 0.0, TAU, 72, Color(0.45, 0.95, 1.0, 0.45), 2.0)
+	)
+
+	var tween: Tween = create_tween()
+	tween.tween_property(pulse, "scale", Vector2(8.0, 8.0), 0.38)
+	tween.parallel().tween_property(pulse, "modulate:a", 0.0, 0.38)
+	tween.tween_callback(pulse.queue_free)
+
+func _apply_vacuum_pulse_upgrade_stats() -> void:
+	vacuum_pulse_unlocked = true
+	vacuum_pulse_cooldown = max(
+		VACUUM_PULSE_MIN_COOLDOWN,
+		VACUUM_PULSE_BASE_COOLDOWN - float(vacuum_pulse_upgrade_count - 1) * VACUUM_PULSE_COOLDOWN_REDUCTION_PER_UPGRADE
+	)
+	vacuum_pulse_timer = min(vacuum_pulse_timer, 1.0)
 
 func _handle_orbit_ball_weapon(delta: float) -> void:
 	if orbit_ball_level <= 0:
@@ -1076,6 +1158,20 @@ func _build_level_up_choices() -> Array[Dictionary]:
 			"text": "Pickup Radius Up\nCollect EXP from farther away"
 		})
 
+	if vacuum_pulse_upgrade_count < MAX_VACUUM_PULSE_UPGRADES:
+		if vacuum_pulse_upgrade_count == 0:
+			pool.append({
+				"id": "vacuum_pulse_upgrade",
+				"text": "Unlock Vacuum Pulse\nEvery 12 seconds, nearby EXP gems rush toward you",
+				"rarity": RARITY_RARE
+			})
+		else:
+			pool.append({
+				"id": "vacuum_pulse_upgrade",
+				"text": "Upgrade Vacuum Pulse\nActivates more often and pulls EXP gems in bursts",
+				"rarity": RARITY_RARE
+			})
+
 	if projectile_speed_upgrade_count < MAX_PROJECTILE_SPEED_UPGRADES:
 		pool.append(_make_rarity_choice(
 			"projectile_speed_upgrade",
@@ -1270,6 +1366,11 @@ func _on_level_up_choice_pressed(index: int) -> void:
 		"pickup_radius_upgrade":
 			pickup_radius_upgrade_count += 1
 			player.increase_pickup_radius(0.20)
+
+		"vacuum_pulse_upgrade":
+			vacuum_pulse_upgrade_count += 1
+			_apply_vacuum_pulse_upgrade_stats()
+			_trigger_vacuum_pulse()
 
 		"projectile_speed_upgrade":
 			projectile_speed_upgrade_count += 1
