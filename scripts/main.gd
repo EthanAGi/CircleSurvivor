@@ -53,6 +53,7 @@ var exp_pickup_scene: PackedScene = preload("res://scenes/exp_pickup.tscn")
 var orbit_ball_scene: PackedScene = preload("res://scenes/orbit_ball.tscn")
 var lightning_scene: PackedScene = preload("res://scenes/lightning.tscn")
 var missile_scene := load("res://scenes/missile.tscn") as PackedScene
+var forcefield_scene: PackedScene = preload("res://scenes/forcefield.tscn")
 var damage_number_script := load("res://scripts/damage_number.gd") as GDScript
 
 var game_over: bool = false
@@ -67,9 +68,11 @@ const BULLET_MAX_LEVEL: int = 8
 const ORBIT_BALL_MAX_LEVEL: int = 5
 const LIGHTNING_MAX_LEVEL: int = 5
 const MISSILE_MAX_LEVEL: int = 5
+const FORCEFIELD_MAX_LEVEL: int = 6
 const LIGHTNING_EVOLUTION_REQUIRED_ATTACK_SIZE_UPGRADES: int = 6
 const MISSILE_EVOLUTION_REQUIRED_PROJECTILE_SPEED_UPGRADES: int = 6
 const ORBIT_BALL_EVOLUTION_REQUIRED_SPEED_UPGRADES: int = 6
+const FORCEFIELD_EVOLUTION_REQUIRED_ARMOR_UPGRADES: int = 5
 
 const MAX_HEALTH_UPGRADES: int = 8
 const MAX_ARMOR_UPGRADES: int = 5
@@ -125,10 +128,12 @@ var bullet_level: int = 1
 var orbit_ball_level: int = 0
 var lightning_level: int = 0
 var missile_level: int = 0
+var forcefield_level: int = 0
 
 var lightning_evolved: bool = false
 var missile_evolved: bool = false
 var orbit_ball_evolved: bool = false
+var forcefield_evolved: bool = false
 
 var max_health_upgrade_count: int = 0
 var armor_upgrade_count: int = 0
@@ -179,6 +184,14 @@ var missile_timer: float = 0.0
 var missile_burn_duration: float = 0.0
 var missile_burn_tick_damage: int = 0
 var missile_burn_tick_interval: float = 0.5
+
+var forcefield_cooldown: float = 99999.0
+var forcefield_duration: float = 0.0
+var forcefield_radius: float = 0.0
+var forcefield_damage: int = 0
+var forcefield_tick_interval: float = 0.35
+var forcefield_knockback_force: float = 0.0
+var forcefield_timer: float = 0.0
 
 var level_up_choices: Array[Dictionary] = []
 var level_up_buttons: Array[Button] = []
@@ -317,6 +330,7 @@ func _process(delta: float) -> void:
 	_handle_orbit_ball_weapon(delta)
 	_handle_lightning_weapon(delta)
 	_handle_missile_weapon(delta)
+	_handle_forcefield_weapon(delta)
 	_handle_vacuum_pulse(delta)
 
 	queue_redraw()
@@ -777,6 +791,88 @@ func _spawn_player_missile(target: Area2D, angle_offset: float = 0.0) -> void:
 	if "is_napalm_launcher" in missile:
 		missile.is_napalm_launcher = missile_evolved
 
+func _handle_forcefield_weapon(delta: float) -> void:
+	if forcefield_level <= 0:
+		return
+
+	forcefield_timer -= delta
+
+	if forcefield_timer <= 0.0:
+		forcefield_timer = forcefield_cooldown
+		_spawn_forcefield_burst()
+
+func _spawn_forcefield_burst() -> void:
+	if forcefield_scene == null:
+		return
+
+	if player == null or not is_instance_valid(player):
+		return
+
+	var forcefield: Node = forcefield_scene.instantiate()
+	forcefield.process_mode = Node.PROCESS_MODE_PAUSABLE
+	add_child(forcefield)
+
+	if "player" in forcefield:
+		forcefield.player = player
+	if "main" in forcefield:
+		forcefield.main = self
+	if "radius" in forcefield:
+		forcefield.radius = forcefield_radius * attack_size_multiplier
+	if "duration" in forcefield:
+		forcefield.duration = forcefield_duration
+	if "tick_interval" in forcefield:
+		forcefield.tick_interval = forcefield_tick_interval
+	if "damage" in forcefield:
+		forcefield.damage = forcefield_damage
+	if "knockback_force" in forcefield:
+		forcefield.knockback_force = forcefield_knockback_force * attack_size_multiplier
+	if "is_permanent" in forcefield:
+		forcefield.is_permanent = forcefield_evolved
+
+	forcefield.global_position = player.global_position
+
+	_shake_screen(3.0)
+
+func damage_forcefield_enemies(center_position: Vector2, radius: float, base_damage: int, knockback_force: float) -> void:
+	if game_over:
+		return
+
+	var damaged_enemies: Array[Area2D] = []
+
+	for child in get_children():
+		if not (child is Area2D):
+			continue
+
+		var enemy: Area2D = child as Area2D
+
+		if not is_instance_valid(enemy):
+			continue
+
+		if not enemy.scene_file_path.ends_with("enemy.tscn"):
+			continue
+
+		if enemy.global_position.distance_to(center_position) > radius:
+			continue
+
+		if enemy in damaged_enemies:
+			continue
+
+		damaged_enemies.append(enemy)
+
+		var knockback_direction: Vector2 = (enemy.global_position - center_position).normalized()
+		if knockback_direction == Vector2.ZERO:
+			knockback_direction = Vector2.RIGHT
+
+		var damage_result: Dictionary = _roll_damage_result(base_damage)
+		var final_damage: int = int(damage_result["damage"])
+		var is_crit: bool = bool(damage_result["is_crit"])
+
+		if enemy.has_method("take_damage"):
+			enemy.take_damage(final_damage, knockback_direction, knockback_force)
+
+		if is_crit:
+			trigger_player_crit_effects(enemy, enemy.global_position, final_damage, knockback_direction)
+
 func _get_enemies_in_range(range_limit: float) -> Array[Area2D]:
 	var enemies_in_range: Array[Area2D] = []
 
@@ -1227,6 +1323,13 @@ func _can_evolve_orbit_ball() -> bool:
 		and speed_upgrade_count >= ORBIT_BALL_EVOLUTION_REQUIRED_SPEED_UPGRADES
 	)
 
+func _can_evolve_forcefield() -> bool:
+	return (
+		not forcefield_evolved
+		and forcefield_level >= FORCEFIELD_MAX_LEVEL
+		and armor_upgrade_count >= FORCEFIELD_EVOLUTION_REQUIRED_ARMOR_UPGRADES
+	)
+
 func _make_rarity_choice(choice_id: String, title: String, description: String, amount: float) -> Dictionary:
 	var rarity: String = _roll_rarity()
 	return {
@@ -1317,6 +1420,15 @@ func _on_level_up_choice_pressed(index: int) -> void:
 			missile_level += 1
 			_apply_missile_upgrade_stats()
 
+		"unlock_forcefield":
+			forcefield_level = 1
+			_apply_forcefield_upgrade_stats()
+			forcefield_timer = 0.1
+
+		"forcefield_upgrade":
+			forcefield_level += 1
+			_apply_forcefield_upgrade_stats()
+
 		"evolve_lightning":
 			lightning_evolved = true
 			_apply_lightning_upgrade_stats()
@@ -1333,6 +1445,12 @@ func _on_level_up_choice_pressed(index: int) -> void:
 			orbit_ball_evolved = true
 			_apply_orbit_ball_upgrade_stats()
 			orbit_ball_timer = 0.1
+			_shake_screen(ELITE_SPAWN_SCREEN_SHAKE)
+
+		"evolve_forcefield":
+			forcefield_evolved = true
+			_apply_forcefield_upgrade_stats()
+			forcefield_timer = 0.1
 			_shake_screen(ELITE_SPAWN_SCREEN_SHAKE)
 
 		"unlock_crit_explosion":
@@ -1555,6 +1673,59 @@ func _apply_missile_upgrade_stats() -> void:
 		missile_burn_duration = 4.2
 		missile_burn_tick_damage = 3
 		missile_burn_tick_interval = 0.4
+
+func _apply_forcefield_upgrade_stats() -> void:
+	match forcefield_level:
+		1:
+			forcefield_cooldown = 5.5
+			forcefield_duration = 1.8
+			forcefield_radius = 82.0
+			forcefield_damage = 1
+			forcefield_tick_interval = 0.45
+			forcefield_knockback_force = 75.0
+		2:
+			forcefield_cooldown = 5.0
+			forcefield_duration = 2.1
+			forcefield_radius = 94.0
+			forcefield_damage = 1
+			forcefield_tick_interval = 0.42
+			forcefield_knockback_force = 90.0
+		3:
+			forcefield_cooldown = 4.4
+			forcefield_duration = 2.5
+			forcefield_radius = 108.0
+			forcefield_damage = 2
+			forcefield_tick_interval = 0.40
+			forcefield_knockback_force = 105.0
+		4:
+			forcefield_cooldown = 3.8
+			forcefield_duration = 3.0
+			forcefield_radius = 122.0
+			forcefield_damage = 2
+			forcefield_tick_interval = 0.36
+			forcefield_knockback_force = 120.0
+		5:
+			forcefield_cooldown = 3.2
+			forcefield_duration = 3.7
+			forcefield_radius = 138.0
+			forcefield_damage = 2
+			forcefield_tick_interval = 0.32
+			forcefield_knockback_force = 135.0
+		_:
+			forcefield_cooldown = 2.7
+			forcefield_duration = 4.4
+			forcefield_radius = 155.0
+			forcefield_damage = 3
+			forcefield_tick_interval = 0.28
+			forcefield_knockback_force = 155.0
+
+	if forcefield_evolved:
+		forcefield_cooldown = 0.15
+		forcefield_duration = 999999.0
+		forcefield_radius = 180.0
+		forcefield_damage = 3
+		forcefield_tick_interval = 0.24
+		forcefield_knockback_force = 185.0
 
 func _get_nearest_enemy() -> Area2D:
 	var nearest: Area2D = null

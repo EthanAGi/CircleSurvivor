@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://x2rb5lmlwjpx"]
+
+[ext_resource type="Script" uid="uid://heegtvkeisqg" path="res://scripts/forcefield.gd" id="1_61kio"]
+
+[node name="Forcefield" type="Node2D" unique_id=1956876192]
+script = ExtResource("1_61kio")
