@@ -192,6 +192,7 @@ var forcefield_damage: int = 0
 var forcefield_tick_interval: float = 0.35
 var forcefield_knockback_force: float = 0.0
 var forcefield_timer: float = 0.0
+var active_permanent_forcefield: Node = null
 
 var level_up_choices: Array[Dictionary] = []
 var level_up_buttons: Array[Button] = []
@@ -808,9 +809,11 @@ func _spawn_forcefield_burst() -> void:
 	if player == null or not is_instance_valid(player):
 		return
 
+	if forcefield_evolved and active_permanent_forcefield != null and is_instance_valid(active_permanent_forcefield):
+		return
+
 	var forcefield: Node = forcefield_scene.instantiate()
 	forcefield.process_mode = Node.PROCESS_MODE_PAUSABLE
-	add_child(forcefield)
 
 	if "player" in forcefield:
 		forcefield.player = player
@@ -830,6 +833,10 @@ func _spawn_forcefield_burst() -> void:
 		forcefield.is_permanent = forcefield_evolved
 
 	forcefield.global_position = player.global_position
+	add_child(forcefield)
+
+	if forcefield_evolved:
+		active_permanent_forcefield = forcefield
 
 	_shake_screen(3.0)
 
@@ -1162,6 +1169,13 @@ func _build_level_up_choices() -> Array[Dictionary]:
 			"rarity": RARITY_EPIC
 		})
 
+	if _can_evolve_forcefield():
+		pool.append({
+			"id": "evolve_forcefield",
+			"text": "EVOLVE Forcefield: Permanent Barrier\nRequires max Forcefield + max Armor",
+			"rarity": RARITY_EPIC
+		})
+
 	if bullet_level < BULLET_MAX_LEVEL:
 		pool.append({
 			"id": "bullet_upgrade",
@@ -1199,6 +1213,19 @@ func _build_level_up_choices() -> Array[Dictionary]:
 		pool.append({
 			"id": "missile_upgrade",
 			"text": "Upgrade Homing Missile\nFaster reload, more damage, and stronger burns"
+		})
+
+	if forcefield_level == 0:
+		pool.append({
+			"id": "unlock_forcefield",
+			"text": "Unlock Forcefield\nCreates timed protective AOE bursts around you",
+			"rarity": RARITY_RARE
+		})
+	elif forcefield_level < FORCEFIELD_MAX_LEVEL:
+		pool.append({
+			"id": "forcefield_upgrade",
+			"text": "Upgrade Forcefield\nLarger field, longer uptime, more damage, and stronger knockback",
+			"rarity": RARITY_RARE
 		})
 
 	if missile_level > 0 and not crit_explosion_unlocked:
@@ -1280,7 +1307,7 @@ func _build_level_up_choices() -> Array[Dictionary]:
 		pool.append(_make_rarity_choice(
 			"attack_size_upgrade",
 			"Attack Size Up",
-			"Bigger bullets, lightning, missiles, and orbit balls",
+			"Bigger bullets, lightning, missiles, orbit balls, and forcefields",
 			0.12
 		))
 
@@ -1450,6 +1477,9 @@ func _on_level_up_choice_pressed(index: int) -> void:
 		"evolve_forcefield":
 			forcefield_evolved = true
 			_apply_forcefield_upgrade_stats()
+			if active_permanent_forcefield != null and is_instance_valid(active_permanent_forcefield):
+				active_permanent_forcefield.queue_free()
+			active_permanent_forcefield = null
 			forcefield_timer = 0.1
 			_shake_screen(ELITE_SPAWN_SCREEN_SHAKE)
 
