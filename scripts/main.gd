@@ -1,3 +1,4 @@
+# Version 0.1.1
 extends Node2D
 
 @onready var player = $Player
