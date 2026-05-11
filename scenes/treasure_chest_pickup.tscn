@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://caymu1wiv1its"]
+
+[ext_resource type="Script" uid="uid://3khdnv4bdetm" path="res://scripts/treasure_chest_pickup.gd" id="1_061cv"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_vcecj"]
+radius = 28.0
+
+[node name="TreasureChestPickup" type="Area2D" unique_id=967418777]
+script = ExtResource("1_061cv")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=75859140]
+shape = SubResource("CircleShape2D_vcecj")

@@ -55,6 +55,7 @@ var orbit_ball_scene: PackedScene = preload("res://scenes/orbit_ball.tscn")
 var lightning_scene: PackedScene = preload("res://scenes/lightning.tscn")
 var missile_scene := load("res://scenes/missile.tscn") as PackedScene
 var forcefield_scene: PackedScene = preload("res://scenes/forcefield.tscn")
+var treasure_chest_scene: PackedScene = preload("res://scenes/treasure_chest_pickup.tscn")
 var damage_number_script := load("res://scripts/damage_number.gd") as GDScript
 
 var game_over: bool = false
@@ -216,10 +217,22 @@ const MAX_EXTRA_ENEMIES_OVER_TIME: int = 16
 const ELITE_FIRST_SPAWN_TIME: float = 30.0
 const ELITE_SPAWN_INTERVAL: float = 45.0
 
+const TREASURE_CHEST_DROP_CHANCE_FROM_ELITE: float = 0.75
+const TREASURE_CHEST_TRIPLE_REWARD_CHANCE: float = 0.35
+const TREASURE_CHEST_EVOLUTION_REWARD_CHANCE: float = 0.30
+const TREASURE_CHEST_SCREEN_SHAKE: float = 12.0
+
 var enemies_per_spawn: int = 1
 var next_elite_spawn_time: float = ELITE_FIRST_SPAWN_TIME
 var elite_spawn_count: int = 0
 var elite_warning_label: Label = null
+
+var chest_reward_panel: Control = null
+var chest_reward_title: Label = null
+var chest_reward_body: Label = null
+var chest_reward_button: Button = null
+var chest_reward_choices: Array[Dictionary] = []
+var chest_reward_waiting_for_claim: bool = false
 
 func _ready() -> void:
 	rng.randomize()
@@ -231,6 +244,7 @@ func _ready() -> void:
 
 	_setup_camera()
 	_create_elite_warning_label()
+	_create_chest_reward_ui()
 
 	player.died.connect(_on_player_died)
 	player.shoot_requested.connect(_on_player_shoot_requested)
@@ -292,6 +306,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if level_up_panel.visible:
+		return
+
+	if chest_reward_panel != null and chest_reward_panel.visible:
 		return
 
 	if pause_menu == null:
@@ -1049,6 +1066,255 @@ func _on_enemy_died(enemy_position: Vector2, exp_amount: int, enemy_type: int) -
 
 	call_deferred("_spawn_exp_pickup", enemy_position, exp_amount, enemy_type)
 
+	if enemy_type == ENEMY_TYPE_ELITE and rng.randf() <= TREASURE_CHEST_DROP_CHANCE_FROM_ELITE:
+		call_deferred("_spawn_treasure_chest", enemy_position)
+
+func _spawn_treasure_chest(chest_position: Vector2) -> void:
+	if game_over:
+		return
+
+	if treasure_chest_scene == null:
+		return
+
+	var chest: Node = treasure_chest_scene.instantiate()
+	chest.process_mode = Node.PROCESS_MODE_PAUSABLE
+	add_child(chest)
+	chest.global_position = chest_position
+
+	if chest.has_method("setup"):
+		chest.setup(player)
+
+	if chest.has_signal("collected"):
+		chest.collected.connect(_on_treasure_chest_collected)
+
+func _on_treasure_chest_collected(chest_position: Vector2) -> void:
+	if game_over:
+		return
+
+	_open_treasure_chest_reward(chest_position)
+
+func _create_chest_reward_ui() -> void:
+	var ui_root := get_node_or_null("UI/UIRoot") as Control
+	if ui_root == null:
+		return
+
+	# Full-screen UI layer. This fixes the chest window appearing off-screen
+	# when UIRoot uses unusual anchors, offsets, or scaling.
+	chest_reward_panel = Control.new()
+	chest_reward_panel.name = "ChestRewardLayer"
+	chest_reward_panel.visible = false
+	chest_reward_panel.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
+	chest_reward_panel.z_index = 900
+	chest_reward_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	ui_root.add_child(chest_reward_panel)
+
+	chest_reward_panel.anchor_left = 0.0
+	chest_reward_panel.anchor_top = 0.0
+	chest_reward_panel.anchor_right = 1.0
+	chest_reward_panel.anchor_bottom = 1.0
+	chest_reward_panel.offset_left = 0.0
+	chest_reward_panel.offset_top = 0.0
+	chest_reward_panel.offset_right = 0.0
+	chest_reward_panel.offset_bottom = 0.0
+
+	var center_container := CenterContainer.new()
+	center_container.name = "CenterContainer"
+	center_container.mouse_filter = Control.MOUSE_FILTER_PASS
+	chest_reward_panel.add_child(center_container)
+
+	center_container.anchor_left = 0.0
+	center_container.anchor_top = 0.0
+	center_container.anchor_right = 1.0
+	center_container.anchor_bottom = 1.0
+	center_container.offset_left = 0.0
+	center_container.offset_top = 0.0
+	center_container.offset_right = 0.0
+	center_container.offset_bottom = 0.0
+
+	var reward_box := PanelContainer.new()
+	reward_box.name = "RewardBox"
+	reward_box.custom_minimum_size = Vector2(560, 300)
+	center_container.add_child(reward_box)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_right", 24)
+	margin.add_theme_constant_override("margin_bottom", 20)
+	reward_box.add_child(margin)
+
+	var box := VBoxContainer.new()
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_theme_constant_override("separation", 12)
+	margin.add_child(box)
+
+	chest_reward_title = Label.new()
+	chest_reward_title.text = "Treasure Chest"
+	chest_reward_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	chest_reward_title.add_theme_font_size_override("font_size", 34)
+	chest_reward_title.add_theme_color_override("font_color", Color(1.0, 0.82, 0.25))
+	box.add_child(chest_reward_title)
+
+	chest_reward_body = Label.new()
+	chest_reward_body.text = ""
+	chest_reward_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	chest_reward_body.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	chest_reward_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	chest_reward_body.custom_minimum_size = Vector2(500, 120)
+	chest_reward_body.add_theme_font_size_override("font_size", 18)
+	box.add_child(chest_reward_body)
+
+	chest_reward_button = Button.new()
+	chest_reward_button.text = "Claim Reward"
+	chest_reward_button.custom_minimum_size = Vector2(260, 56)
+	chest_reward_button.focus_mode = Control.FOCUS_ALL
+	chest_reward_button.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
+	chest_reward_button.pressed.connect(_on_chest_reward_claim_pressed)
+	box.add_child(chest_reward_button)
+
+func _open_treasure_chest_reward(chest_position: Vector2) -> void:
+	if chest_reward_panel == null:
+		_apply_treasure_chest_reward_without_ui()
+		return
+
+	if pause_menu != null:
+		pause_menu_open = false
+		pause_menu.visible = false
+
+	if level_up_panel != null:
+		level_up_panel.visible = false
+
+	chest_reward_choices = _build_treasure_chest_reward_choices()
+	if chest_reward_choices.is_empty():
+		chest_reward_choices = _build_level_up_choices()
+
+	if chest_reward_choices.is_empty():
+		return
+
+	var reward_texts: Array[String] = []
+	for choice in chest_reward_choices:
+		reward_texts.append(_clean_upgrade_text(str(choice.get("text", "Mystery Upgrade"))))
+
+	if chest_reward_choices.size() >= 3:
+		chest_reward_title.text = "Treasure Chest: Triple Reward"
+	else:
+		chest_reward_title.text = "Treasure Chest"
+
+	chest_reward_body.text = "You found:\n\n" + "\n".join(reward_texts)
+	chest_reward_panel.visible = true
+	chest_reward_waiting_for_claim = true
+
+	_shake_screen(TREASURE_CHEST_SCREEN_SHAKE)
+	_spawn_chest_burst_visual(chest_position)
+
+	get_tree().paused = true
+	call_deferred("_focus_chest_reward_button")
+
+func _focus_chest_reward_button() -> void:
+	if chest_reward_button != null and chest_reward_button.visible:
+		chest_reward_button.grab_focus()
+
+func _on_chest_reward_claim_pressed() -> void:
+	if not chest_reward_waiting_for_claim:
+		return
+
+	for choice in chest_reward_choices:
+		_apply_upgrade_choice(choice)
+
+	chest_reward_choices.clear()
+	chest_reward_waiting_for_claim = false
+
+	if chest_reward_panel != null:
+		chest_reward_panel.visible = false
+
+	get_tree().paused = false
+
+func _apply_treasure_chest_reward_without_ui() -> void:
+	var choices := _build_treasure_chest_reward_choices()
+	for choice in choices:
+		_apply_upgrade_choice(choice)
+
+func _build_treasure_chest_reward_choices() -> Array[Dictionary]:
+	var evolution_choices := _build_available_evolution_choices()
+	if not evolution_choices.is_empty() and rng.randf() <= TREASURE_CHEST_EVOLUTION_REWARD_CHANCE:
+		evolution_choices.shuffle()
+		return [evolution_choices[0]]
+
+	var normal_pool := _build_level_up_choices(false)
+	if normal_pool.is_empty():
+		return evolution_choices
+
+	var reward_count: int = 1
+	if rng.randf() <= TREASURE_CHEST_TRIPLE_REWARD_CHANCE:
+		reward_count = 3
+
+	var result: Array[Dictionary] = []
+	var max_rewards: int = min(reward_count, normal_pool.size())
+	for i in range(max_rewards):
+		result.append(normal_pool[i])
+
+	return result
+
+func _build_available_evolution_choices() -> Array[Dictionary]:
+	var choices: Array[Dictionary] = []
+
+	if _can_evolve_lightning():
+		choices.append({
+			"id": "evolve_lightning",
+			"text": "EVOLVE Lightning: Chain Storm\nTreasure chest evolution reward",
+			"rarity": RARITY_EPIC
+		})
+
+	if _can_evolve_missile():
+		choices.append({
+			"id": "evolve_missile",
+			"text": "EVOLVE Missile: Napalm Launcher\nTreasure chest evolution reward",
+			"rarity": RARITY_EPIC
+		})
+
+	if _can_evolve_orbit_ball():
+		choices.append({
+			"id": "evolve_orbit_ball",
+			"text": "EVOLVE Orbit Ball: Blade Ring\nTreasure chest evolution reward",
+			"rarity": RARITY_EPIC
+		})
+
+	if _can_evolve_forcefield():
+		choices.append({
+			"id": "evolve_forcefield",
+			"text": "EVOLVE Forcefield: Permanent Barrier\nTreasure chest evolution reward",
+			"rarity": RARITY_EPIC
+		})
+
+	return choices
+
+func _clean_upgrade_text(text: String) -> String:
+	return "- " + text.replace("\n", ": ")
+
+func _spawn_chest_burst_visual(chest_position: Vector2) -> void:
+	var burst := Node2D.new()
+	burst.process_mode = Node.PROCESS_MODE_ALWAYS
+	burst.global_position = chest_position
+	add_child(burst)
+
+	var tween := create_tween()
+	tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tween.tween_method(func(value: float) -> void:
+		if burst == null or not is_instance_valid(burst):
+			return
+		burst.queue_redraw()
+	, 0.0, 1.0, 0.45)
+	tween.finished.connect(func() -> void:
+		if burst != null and is_instance_valid(burst):
+			burst.queue_free()
+	)
+
+	burst.draw.connect(func() -> void:
+		var radius: float = 34.0
+		burst.draw_circle(Vector2.ZERO, radius, Color(1.0, 0.75, 0.18, 0.24))
+		burst.draw_arc(Vector2.ZERO, radius + 8.0, 0.0, TAU, 48, Color(1.0, 0.88, 0.35, 0.9), 4.0)
+	)
+
 func _spawn_exp_pickup(enemy_position: Vector2, exp_amount: int, enemy_type: int) -> void:
 	if game_over:
 		return
@@ -1146,7 +1412,7 @@ func _on_skip_button_pressed() -> void:
 
 	_close_level_up_menu()
 
-func _build_level_up_choices() -> Array[Dictionary]:
+func _build_level_up_choices(limit_to_three: bool = true) -> Array[Dictionary]:
 	var pool: Array[Dictionary] = []
 
 	if _can_evolve_lightning():
@@ -1322,6 +1588,9 @@ func _build_level_up_choices() -> Array[Dictionary]:
 
 	pool.shuffle()
 
+	if not limit_to_three:
+		return pool
+
 	var result: Array[Dictionary] = []
 	var max_choices: int = min(3, pool.size())
 
@@ -1413,7 +1682,14 @@ func _on_level_up_choice_pressed(index: int) -> void:
 	if index >= level_up_choices.size():
 		return
 
+	if not level_up_panel.visible:
+		return
+
 	var choice: Dictionary = level_up_choices[index]
+	_apply_upgrade_choice(choice)
+	_close_level_up_menu()
+
+func _apply_upgrade_choice(choice: Dictionary) -> void:
 	var choice_id: String = str(choice["id"])
 
 	match choice_id:
@@ -1534,7 +1810,6 @@ func _on_level_up_choice_pressed(index: int) -> void:
 			crit_chance += float(choice.get("amount", 0.08))
 			crit_chance = min(crit_chance, 0.60)
 
-	_close_level_up_menu()
 
 func _apply_bullet_upgrade_stats() -> void:
 	var new_wait_time: float = 0.5
