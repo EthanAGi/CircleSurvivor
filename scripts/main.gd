@@ -2300,4 +2300,3 @@ func _spawn_crit_explosion_visual(hit_position: Vector2, explosion_radius: float
 
 	if "strike_radius" in visual:
 		visual.strike_radius = explosion_radius
-# Contribute
