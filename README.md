@@ -138,6 +138,7 @@ Different enemy types introduce varying combat pressures:
 
 ## Elite Enemies
 Special enemies spawn at intervals and significantly increase danger.
+
 Elite enemies feature:
 - Increased health
 - Increased movement speed
@@ -248,6 +249,40 @@ The structure is designed for maintainability and rapid feature expansion.
 
 ---
 
+# Technical Highlights
+
+## Modular Weapon Design
+Each weapon operates through its own scene and script structure, making the combat system easy to expand and maintain.
+
+## Scene-Based Architecture
+Gameplay systems are separated into reusable scenes and scripts to keep development scalable and organized.
+
+## Dynamic Difficulty Scaling
+Enemy pressure ramps continuously over time using scalable spawning and stat systems.
+
+## Input Flexibility
+Menus and gameplay support both keyboard and mouse interaction with full UI navigation support.
+
+## Performance-Oriented Design
+Systems are designed to support large enemy counts and high-action gameplay while remaining responsive.
+
+---
+
+# Design Philosophy
+
+CircleSurvivor is designed around three major principles:
+
+## 1. Readability
+Combat should remain visually understandable even during chaos.
+
+## 2. Responsiveness
+Movement, attacks, and menus should always feel immediate and smooth.
+
+## 3. Synergy
+The most satisfying builds emerge through combinations of systems interacting together.
+
+---
+
 # Tech Stack
 
 | Category | Technology |
@@ -295,11 +330,9 @@ CircleSurvivor is currently fully playable and includes:
 
 ---
 
-# Planned Features
+# Development Roadmap
 
-The project is actively expanding with additional gameplay systems planned.
-
-## Upcoming Features
+## Planned Features
 - Boss encounters
 - Additional enemy archetypes
 - More weapons and evolutions
@@ -314,19 +347,18 @@ The project is actively expanding with additional gameplay systems planned.
 
 ---
 
-# Development Goals
+# Development Status
 
-CircleSurvivor is being developed with a strong focus on:
-- Combat feel
-- System synergy
-- Replayability
-- Clean architecture
-- Gameplay readability
-- Scalable feature design
+CircleSurvivor is actively developed through continuous iteration and feature expansion.
 
-The project serves both as:
-- A fully playable game
-- A demonstration of gameplay system implementation and iterative game development
+The project currently focuses on:
+- Gameplay feel
+- System depth
+- Combat satisfaction
+- Code maintainability
+- Long-term scalability
+
+New systems and improvements are added regularly as development continues.
 
 ---
 
@@ -334,6 +366,16 @@ The project serves both as:
 
 ## Ethan G
 Game Developer
+
+---
+
+# About This Project
+
+CircleSurvivor serves as both:
+- A fully playable survival game
+- A long-term game development project focused on gameplay systems and scalable architecture
+
+The project emphasizes iterative design, experimentation, and continual expansion.
 
 ---
 
