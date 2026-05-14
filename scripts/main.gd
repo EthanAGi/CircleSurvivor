@@ -123,6 +123,28 @@ const ENEMY_TYPE_TANK: int = 2
 const ENEMY_TYPE_RANGED: int = 3
 const ENEMY_TYPE_ELITE: int = 4
 
+const ENEMY_MODIFIER_NONE: int = 0
+const ENEMY_MODIFIER_BURNING: int = 1
+const ENEMY_MODIFIER_ARMORED: int = 2
+const ENEMY_MODIFIER_SWIFT: int = 3
+const ENEMY_MODIFIER_SPLITTING: int = 4
+const ENEMY_MODIFIER_EXPLOSIVE: int = 5
+
+const ENEMY_MODIFIER_FIRST_TIME: float = 35.0
+const ENEMY_MODIFIER_MAX_CHANCE: float = 0.28
+
+const BURNING_DEATH_RADIUS: float = 95.0
+const BURNING_DEATH_BURN_DURATION: float = 2.0
+const BURNING_DEATH_BURN_DAMAGE: int = 1
+const BURNING_DEATH_BURN_INTERVAL: float = 0.5
+
+const EXPLOSIVE_DEATH_RADIUS: float = 115.0
+const EXPLOSIVE_DEATH_DAMAGE: int = 1
+const EXPLOSIVE_DEATH_ENEMY_DAMAGE: int = 2
+const EXPLOSIVE_DEATH_KNOCKBACK: float = 260.0
+
+const SPLITTING_CHILD_COUNT: int = 2
+
 var screen_shake_camera: Camera2D = null
 var screen_shake_strength: float = 0.0
 
@@ -935,20 +957,27 @@ func _on_spawn_timer_timeout() -> void:
 		_spawn_enemy()
 
 func _spawn_enemy() -> void:
+	var enemy_type: int = _roll_enemy_type_for_current_time()
+	var enemy_modifier: int = _roll_enemy_modifier_for_current_time(enemy_type)
+	_spawn_enemy_at(_get_spawn_position(), enemy_type, enemy_modifier)
+
+func _spawn_enemy_at(spawn_position: Vector2, enemy_type: int, enemy_modifier: int = ENEMY_MODIFIER_NONE) -> void:
 	var enemy: Area2D = enemy_scene.instantiate()
 	enemy.process_mode = Node.PROCESS_MODE_PAUSABLE
 
 	enemy.player = player
-	enemy.global_position = _get_spawn_position()
+	enemy.global_position = spawn_position
 	enemy.projectile_scene = enemy_projectile_scene
-	enemy.enemy_type = _roll_enemy_type_for_current_time()
+	enemy.enemy_type = enemy_type
+
+	if "enemy_modifier" in enemy:
+		enemy.enemy_modifier = enemy_modifier
 
 	enemy.body_entered.connect(_on_enemy_body_entered.bind(enemy))
 	enemy.died.connect(_on_enemy_died)
 	enemy.damaged.connect(_on_enemy_damaged)
 
 	add_child(enemy)
-
 func _spawn_elite_enemy() -> void:
 	var enemy: Area2D = enemy_scene.instantiate()
 	enemy.process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -958,6 +987,9 @@ func _spawn_elite_enemy() -> void:
 	enemy.projectile_scene = enemy_projectile_scene
 	enemy.enemy_type = ENEMY_TYPE_ELITE
 
+	if "enemy_modifier" in enemy:
+		enemy.enemy_modifier = ENEMY_MODIFIER_NONE
+
 	if "elite_level" in enemy:
 		enemy.elite_level = max(1, elite_spawn_count + 1)
 
@@ -966,7 +998,6 @@ func _spawn_elite_enemy() -> void:
 	enemy.damaged.connect(_on_enemy_damaged)
 
 	add_child(enemy)
-
 func _get_active_enemy_count() -> int:
 	var count: int = 0
 
@@ -1012,6 +1043,51 @@ func _roll_enemy_type_for_current_time() -> int:
 	elif roll < 0.72:
 		return ENEMY_TYPE_TANK
 	return ENEMY_TYPE_RANGED
+
+func _roll_enemy_modifier_for_current_time(enemy_type: int) -> int:
+	if enemy_type == ENEMY_TYPE_ELITE:
+		return ENEMY_MODIFIER_NONE
+
+	if survival_time < ENEMY_MODIFIER_FIRST_TIME:
+		return ENEMY_MODIFIER_NONE
+
+	var time_progress: float = clamp(
+		(survival_time - ENEMY_MODIFIER_FIRST_TIME) / max(1.0, win_time - ENEMY_MODIFIER_FIRST_TIME),
+		0.0,
+		1.0
+	)
+
+	var modifier_chance: float = lerp(0.08, ENEMY_MODIFIER_MAX_CHANCE, time_progress)
+
+	if rng.randf() > modifier_chance:
+		return ENEMY_MODIFIER_NONE
+
+	var roll: float = rng.randf()
+
+	if survival_time < 70.0:
+		if roll < 0.50:
+			return ENEMY_MODIFIER_SWIFT
+		return ENEMY_MODIFIER_ARMORED
+
+	if survival_time < 130.0:
+		if roll < 0.25:
+			return ENEMY_MODIFIER_SWIFT
+		elif roll < 0.50:
+			return ENEMY_MODIFIER_ARMORED
+		elif roll < 0.75:
+			return ENEMY_MODIFIER_BURNING
+		return ENEMY_MODIFIER_EXPLOSIVE
+
+	if roll < 0.20:
+		return ENEMY_MODIFIER_SWIFT
+	elif roll < 0.40:
+		return ENEMY_MODIFIER_ARMORED
+	elif roll < 0.60:
+		return ENEMY_MODIFIER_BURNING
+	elif roll < 0.80:
+		return ENEMY_MODIFIER_EXPLOSIVE
+
+	return ENEMY_MODIFIER_SPLITTING
 
 func _on_player_shoot_requested(spawn_position: Vector2) -> void:
 	if game_over:
@@ -1060,15 +1136,143 @@ func _spawn_damage_number(world_position: Vector2, amount: int, color: Color) ->
 	add_child(damage_number)
 	damage_number.global_position = world_position
 
-func _on_enemy_died(enemy_position: Vector2, exp_amount: int, enemy_type: int) -> void:
+func _on_enemy_died(enemy_position: Vector2, exp_amount: int, enemy_type: int, enemy_modifier: int = ENEMY_MODIFIER_NONE) -> void:
 	if game_over:
 		return
+
+	_handle_enemy_modifier_death_effect(enemy_position, enemy_type, enemy_modifier)
 
 	call_deferred("_spawn_exp_pickup", enemy_position, exp_amount, enemy_type)
 
 	if enemy_type == ENEMY_TYPE_ELITE and rng.randf() <= TREASURE_CHEST_DROP_CHANCE_FROM_ELITE:
 		call_deferred("_spawn_treasure_chest", enemy_position)
 
+func _handle_enemy_modifier_death_effect(enemy_position: Vector2, enemy_type: int, enemy_modifier: int) -> void:
+	match enemy_modifier:
+		ENEMY_MODIFIER_BURNING:
+			call_deferred("_trigger_burning_enemy_death", enemy_position)
+
+		ENEMY_MODIFIER_EXPLOSIVE:
+			call_deferred("_trigger_explosive_enemy_death", enemy_position)
+
+		ENEMY_MODIFIER_SPLITTING:
+			call_deferred("_trigger_splitting_enemy_death", enemy_position, enemy_type)
+
+func _trigger_burning_enemy_death(enemy_position: Vector2) -> void:
+	if game_over:
+		return
+
+	_spawn_modifier_burst_visual(enemy_position, BURNING_DEATH_RADIUS, Color(1.0, 0.35, 0.0, 0.75))
+	_shake_screen(5.0)
+
+	for child in get_children():
+		if not (child is Area2D):
+			continue
+
+		var enemy: Area2D = child as Area2D
+		if not is_instance_valid(enemy):
+			continue
+
+		if not enemy.scene_file_path.ends_with("enemy.tscn"):
+			continue
+
+		if enemy.global_position.distance_to(enemy_position) > BURNING_DEATH_RADIUS:
+			continue
+
+		if enemy.has_method("apply_burn"):
+			enemy.apply_burn(
+				BURNING_DEATH_BURN_DURATION,
+				BURNING_DEATH_BURN_DAMAGE,
+				BURNING_DEATH_BURN_INTERVAL
+			)
+
+func _trigger_explosive_enemy_death(enemy_position: Vector2) -> void:
+	if game_over:
+		return
+
+	_spawn_modifier_burst_visual(enemy_position, EXPLOSIVE_DEATH_RADIUS, Color(1.0, 0.1, 0.0, 0.82))
+	_shake_screen(10.0)
+
+	if player != null and is_instance_valid(player):
+		if player.global_position.distance_to(enemy_position) <= EXPLOSIVE_DEATH_RADIUS:
+			player.take_damage(EXPLOSIVE_DEATH_DAMAGE)
+
+	for child in get_children():
+		if not (child is Area2D):
+			continue
+
+		var enemy: Area2D = child as Area2D
+		if not is_instance_valid(enemy):
+			continue
+
+		if not enemy.scene_file_path.ends_with("enemy.tscn"):
+			continue
+
+		var distance: float = enemy.global_position.distance_to(enemy_position)
+		if distance > EXPLOSIVE_DEATH_RADIUS:
+			continue
+
+		var knockback_direction: Vector2 = (enemy.global_position - enemy_position).normalized()
+		if knockback_direction == Vector2.ZERO:
+			knockback_direction = Vector2.RIGHT
+
+		if enemy.has_method("take_damage"):
+			enemy.take_damage(EXPLOSIVE_DEATH_ENEMY_DAMAGE, knockback_direction, EXPLOSIVE_DEATH_KNOCKBACK)
+
+func _trigger_splitting_enemy_death(enemy_position: Vector2, original_enemy_type: int) -> void:
+	if game_over:
+		return
+
+	var active_enemy_count: int = _get_active_enemy_count()
+	var max_enemies: int = _get_current_max_enemies()
+
+	if active_enemy_count >= max_enemies:
+		return
+
+	var children_to_spawn: int = min(SPLITTING_CHILD_COUNT, max_enemies - active_enemy_count)
+
+	for i in range(children_to_spawn):
+		var angle: float = TAU * float(i) / float(max(1, children_to_spawn)) + rng.randf_range(-0.35, 0.35)
+		var offset: Vector2 = Vector2.RIGHT.rotated(angle) * rng.randf_range(32.0, 54.0)
+
+		var child_type: int = ENEMY_TYPE_BASIC
+		if original_enemy_type == ENEMY_TYPE_FAST:
+			child_type = ENEMY_TYPE_FAST
+
+		_spawn_enemy_at(enemy_position + offset, child_type, ENEMY_MODIFIER_NONE)
+
+	_spawn_modifier_burst_visual(enemy_position, 70.0, Color(0.75, 1.0, 0.25, 0.65))
+	_shake_screen(4.0)
+
+func _spawn_modifier_burst_visual(burst_position: Vector2, burst_radius: float, burst_color: Color) -> void:
+	var burst := Node2D.new()
+	burst.name = "EnemyModifierBurstVisual"
+	burst.process_mode = Node.PROCESS_MODE_PAUSABLE
+	burst.global_position = burst_position
+	burst.z_index = 25
+	add_child(burst)
+
+	var current_radius: float = 8.0
+	var current_alpha: float = burst_color.a
+
+	burst.draw.connect(func() -> void:
+		var draw_color: Color = Color(burst_color.r, burst_color.g, burst_color.b, current_alpha)
+		burst.draw_circle(Vector2.ZERO, current_radius, Color(draw_color.r, draw_color.g, draw_color.b, current_alpha * 0.22))
+		burst.draw_arc(Vector2.ZERO, current_radius, 0.0, TAU, 48, draw_color, 4.0)
+	)
+
+	var tween := create_tween()
+	tween.tween_method(func(value: float) -> void:
+		current_radius = lerp(8.0, burst_radius, value)
+		current_alpha = lerp(burst_color.a, 0.0, value)
+		if burst != null and is_instance_valid(burst):
+			burst.queue_redraw()
+	, 0.0, 1.0, 0.35)
+
+	tween.tween_callback(func() -> void:
+		if burst != null and is_instance_valid(burst):
+			burst.queue_free()
+	)
 func _spawn_treasure_chest(chest_position: Vector2) -> void:
 	if game_over:
 		return

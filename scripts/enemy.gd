@@ -1,6 +1,6 @@
 extends Area2D
 
-signal died(enemy_position: Vector2, exp_amount: int, enemy_type: int)
+signal died(enemy_position: Vector2, exp_amount: int, enemy_type: int, enemy_modifier: int)
 signal damaged(damage_position: Vector2, amount: int)
 
 enum EnemyType {
@@ -11,7 +11,17 @@ enum EnemyType {
 	ELITE
 }
 
+enum EnemyModifier {
+	NONE,
+	BURNING,
+	ARMORED,
+	SWIFT,
+	SPLITTING,
+	EXPLOSIVE
+}
+
 @export var enemy_type: int = EnemyType.BASIC
+@export var enemy_modifier: int = EnemyModifier.NONE
 @export var projectile_scene: PackedScene
 
 var speed: float = 120.0
@@ -50,6 +60,7 @@ var shock_has_chained: bool = false
 
 func _ready() -> void:
 	_apply_type_stats()
+	_apply_modifier_stats()
 	current_health = max_health
 	shoot_timer = randf_range(0.4, shoot_cooldown)
 	_apply_collision_size()
@@ -200,6 +211,24 @@ func _apply_type_stats() -> void:
 			exp_drop_amount = 9 + (elite_level - 1) * 3
 			touch_damage = 2 + int(floor(float(elite_level - 1) / 2.0))
 
+func _apply_modifier_stats() -> void:
+	match enemy_modifier:
+		EnemyModifier.ARMORED:
+			max_health += 2
+			exp_drop_amount += 1
+		EnemyModifier.SWIFT:
+			speed *= 1.45
+			max_health = max(1, max_health - 1)
+		EnemyModifier.SPLITTING:
+			max_health += 1
+			exp_drop_amount += 1
+		EnemyModifier.EXPLOSIVE:
+			speed *= 0.95
+			exp_drop_amount += 1
+		EnemyModifier.BURNING:
+			touch_damage += 1
+			exp_drop_amount += 1
+
 func _apply_collision_size() -> void:
 	var collision_shape := get_node_or_null("CollisionShape2D") as CollisionShape2D
 	if collision_shape == null:
@@ -220,6 +249,11 @@ func _apply_collision_size() -> void:
 			circle_shape.radius = 36.0
 		_:
 			circle_shape.radius = 17.0
+
+	if enemy_modifier == EnemyModifier.SWIFT:
+		circle_shape.radius *= 0.85
+	elif enemy_modifier == EnemyModifier.ARMORED:
+		circle_shape.radius *= 1.08
 
 func _process_chase(delta: float) -> void:
 	var direction := (player.global_position - global_position).normalized()
@@ -271,8 +305,13 @@ func take_damage(amount: int = 1, knockback_direction: Vector2 = Vector2.ZERO, k
 	if knockback_direction != Vector2.ZERO and knockback_force > 0.0:
 		apply_knockback(knockback_direction, knockback_force)
 
-	current_health -= amount
-	damaged.emit(global_position + Vector2(0, -18), amount)
+	var final_damage: int = amount
+
+	if enemy_modifier == EnemyModifier.ARMORED:
+		final_damage = max(1, amount - 1)
+
+	current_health -= final_damage
+	damaged.emit(global_position + Vector2(0, -18), final_damage)
 
 	if current_health <= 0:
 		die()
@@ -308,7 +347,7 @@ func die() -> void:
 		return
 
 	is_dead = true
-	died.emit(global_position, exp_drop_amount, enemy_type)
+	died.emit(global_position, exp_drop_amount, enemy_type, enemy_modifier)
 	queue_free()
 
 func _draw() -> void:
@@ -324,7 +363,33 @@ func _draw() -> void:
 		EnemyType.ELITE:
 			_draw_elite()
 
+	_draw_modifier_visual()
 	_draw_status_effects()
+
+func _draw_modifier_visual() -> void:
+	match enemy_modifier:
+		EnemyModifier.BURNING:
+			var pulse: float = 0.35 + sin(Time.get_ticks_msec() / 90.0) * 0.12
+			draw_circle(Vector2.ZERO, 25.0, Color(1.0, 0.28, 0.0, pulse))
+			draw_arc(Vector2.ZERO, 29.0, 0.0, TAU, 32, Color(1.0, 0.55, 0.0, 0.9), 2.0)
+
+		EnemyModifier.ARMORED:
+			draw_arc(Vector2.ZERO, 31.0, 0.0, TAU, 40, Color(0.75, 0.85, 1.0, 0.95), 3.0)
+			draw_arc(Vector2.ZERO, 36.0, 0.0, TAU, 40, Color(0.35, 0.45, 0.8, 0.6), 2.0)
+
+		EnemyModifier.SWIFT:
+			draw_line(Vector2(-24, -10), Vector2(-38, -10), Color(1.0, 1.0, 1.0, 0.75), 2.0)
+			draw_line(Vector2(-22, 0), Vector2(-42, 0), Color(1.0, 1.0, 1.0, 0.55), 2.0)
+			draw_line(Vector2(-24, 10), Vector2(-36, 10), Color(1.0, 1.0, 1.0, 0.75), 2.0)
+
+		EnemyModifier.SPLITTING:
+			draw_circle(Vector2(-9, -24), 5.0, Color(0.8, 1.0, 0.35, 0.9))
+			draw_circle(Vector2(9, -24), 5.0, Color(0.8, 1.0, 0.35, 0.9))
+
+		EnemyModifier.EXPLOSIVE:
+			var warning_alpha: float = 0.5 + sin(Time.get_ticks_msec() / 70.0) * 0.25
+			draw_arc(Vector2.ZERO, 34.0, 0.0, TAU, 36, Color(1.0, 0.1, 0.05, warning_alpha), 4.0)
+			draw_circle(Vector2.ZERO, 6.0, Color(1.0, 0.1, 0.0, 0.85))
 
 func _draw_status_effects() -> void:
 	if burn_time_left > 0.0:
