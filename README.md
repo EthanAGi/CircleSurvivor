@@ -64,6 +64,7 @@ Your choices determine how your run evolves:
 - Status-effect focused combat
 - Explosive chain-reaction builds
 - Defensive orbital strategies
+- Forcefield-based close-range combat
 
 ## 6. Survive Longer
 As elite enemies begin appearing and enemy pressure ramps up, positioning and build decisions become increasingly important.
@@ -87,24 +88,34 @@ Fast and reliable projectile-based damage.
 - Rapid-fire attacks
 - Strong sustained DPS
 - Core foundational weapon
+- Can inherit critical effect upgrades
 
 ### Missiles
 Homing explosive projectiles.
 - Tracks enemies automatically
 - Explosion-based area damage
 - Burn effect support
+- Area-of-effect detonation damage
 
 ### Lightning
 Instant-hit chain attacks.
 - High burst damage
 - Area chain interactions
 - Shock effect synergy
+- Area-of-effect strike damage
 
 ### Orbitals
 Rotating projectiles surrounding the player.
 - Persistent close-range defense
 - Area control
 - Constant collision damage
+
+### Forcefield
+A persistent area-of-effect defensive weapon.
+- Damages nearby enemies automatically
+- Creates defensive space around the player
+- Scales into a near-constant defensive zone
+- Inspired by survival-style aura weapons
 
 ---
 
@@ -113,10 +124,23 @@ Rotating projectiles surrounding the player.
 ## Burn
 Deals damage over time after impact.
 
+Burn can be applied through explosive and missile-based attacks.
+
 ## Shock
 Enhances damage interactions and chain effects.
 
-Status systems are designed to encourage weapon synergy and layered builds.
+Shock effects synergize heavily with lightning attacks and area damage.
+
+## Critical Effect System
+Critical hits can inherit additional combat effects depending on upgrades obtained during a run.
+
+Critical attacks may trigger:
+- Explosions
+- Burn effects
+- Shock interactions
+- Cross-weapon combat synergies
+
+This system allows builds to evolve into highly chaotic chain-reaction setups.
 
 ---
 
@@ -147,6 +171,9 @@ Elite enemies feature:
 
 They act as pacing spikes that force players to reposition and adapt.
 
+## Enemy Projectiles
+Certain enemies can attack from range using projectile systems, forcing players to remain mobile and aware of battlefield positioning.
+
 ---
 
 # Progression Systems
@@ -169,6 +196,17 @@ The system encourages experimentation and replayability through:
 - Weapon synergy
 - Status interactions
 - Scaling power curves
+- Critical effect combinations
+
+## Upgrade Selection
+Players choose from randomized upgrade pools during each level-up.
+
+The system supports:
+- Keyboard navigation
+- Mouse interaction
+- Skip functionality
+- Fast gameplay flow
+- Build specialization
 
 ---
 
@@ -188,6 +226,9 @@ Movement is built around precision and constant repositioning.
 
 Controls are designed to remain smooth and responsive even during high enemy density.
 
+## Camera Follow System
+The camera remains centered on the player and dynamically reacts to combat situations to reinforce impact and movement feel.
+
 ---
 
 # Combat Feedback & Visual Feel
@@ -199,12 +240,16 @@ Floating damage indicators display:
 - Enemy damage
 - Player damage
 - Combat readability
+- Critical hit visibility
 
 ## Camera Shake
 The camera reacts dynamically when taking damage to reinforce impact.
 
 ## Visual Clarity
 Enemy health is represented visually through color changes rather than traditional health bars, reducing UI clutter while maintaining readability.
+
+## Combat Density
+Combat systems are designed to remain visually understandable even during large-scale enemy encounters and overlapping weapon effects.
 
 ---
 
@@ -220,6 +265,9 @@ The entire game is fully playable with both keyboard and mouse controls.
 - Pause Menu
 - Game Over Screen
 
+## Pause Functionality
+Gameplay can be paused seamlessly during runs while maintaining UI navigation support.
+
 ## Level-Up Interface
 The level-up system supports:
 - Keyboard navigation
@@ -227,6 +275,9 @@ The level-up system supports:
 - Focus management
 - Quick selection flow
 - Skip functionality
+
+## Controller-Friendly Navigation Philosophy
+UI systems are built around fast and responsive navigation principles to minimize gameplay interruption.
 
 ---
 
@@ -244,6 +295,10 @@ Implemented systems include:
 - UI state management
 - Camera feedback systems
 - Input-driven menu navigation
+- Elite enemy spawning systems
+- Projectile combat systems
+- Forcefield aura systems
+- Critical effect inheritance systems
 
 The structure is designed for maintainability and rapid feature expansion.
 
@@ -264,7 +319,13 @@ Enemy pressure ramps continuously over time using scalable spawning and stat sys
 Menus and gameplay support both keyboard and mouse interaction with full UI navigation support.
 
 ## Performance-Oriented Design
-Systems are designed to support large enemy counts and high-action gameplay while remaining responsive.
+Systems are designed to support:
+- Large enemy counts
+- Multiple simultaneous projectiles
+- Persistent area effects
+- High-action combat scenarios
+
+while remaining responsive and readable.
 
 ---
 
@@ -280,6 +341,8 @@ Movement, attacks, and menus should always feel immediate and smooth.
 
 ## 3. Synergy
 The most satisfying builds emerge through combinations of systems interacting together.
+
+Weapons, status effects, and upgrades are intentionally designed to overlap and create unexpected build interactions.
 
 ---
 
@@ -314,10 +377,14 @@ CircleSurvivor is currently fully playable and includes:
 - Orbiting projectiles
 - Homing missiles
 - Lightning attacks
+- Forcefield aura weapon
 - Enemy AI and pathing
 - Ranged enemy attacks
+- Enemy projectile systems
 - Elite enemies
 - Status effects
+- Burn and shock interactions
+- Critical effect inheritance
 - Experience and leveling systems
 - Upgrade selection system
 - Camera shake
@@ -327,6 +394,8 @@ CircleSurvivor is currently fully playable and includes:
 - Pause functionality
 - Restart systems
 - Menu navigation systems
+- Difficulty scaling
+- Area-of-effect combat systems
 
 ---
 
@@ -344,6 +413,8 @@ CircleSurvivor is currently fully playable and includes:
 - Save/load systems
 - Additional playable characters
 - New arenas and environments
+- Weapon evolutions
+- Advanced status interactions
 
 ---
 
@@ -375,7 +446,12 @@ CircleSurvivor serves as both:
 - A fully playable survival game
 - A long-term game development project focused on gameplay systems and scalable architecture
 
-The project emphasizes iterative design, experimentation, and continual expansion.
+The project emphasizes:
+- Iterative development
+- Gameplay experimentation
+- Combat system design
+- Modular architecture
+- Continuous expansion
 
 ---
 
