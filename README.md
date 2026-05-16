@@ -49,6 +49,7 @@ Defeated enemies drop experience pickups that can:
 - Be collected manually
 - Be attracted from nearby distances
 - Chain into fast progression during large fights
+- Be pulled in automatically through the EXP Vacuum pickup
 
 ## 4. Level Up
 Each level grants randomized upgrade choices that shape your run:
@@ -188,6 +189,18 @@ Leveling up pauses gameplay and presents randomized upgrade options that influen
 - Survivability
 - Weapon evolution
 
+## EXP Vacuum
+The EXP Vacuum is a special pickup that instantly pulls experience pickups toward the player.
+
+It improves progression flow by allowing the player to rapidly collect scattered experience after large fights.
+
+The EXP Vacuum supports:
+- Faster level progression
+- Reward cleanup after intense enemy waves
+- Reduced backtracking for distant pickups
+- Smoother pacing during chaotic combat
+- More satisfying post-fight collection moments
+
 ## Build Variety
 Runs naturally evolve depending on upgrade combinations and player decisions.
 
@@ -292,6 +305,7 @@ Implemented systems include:
 - Status effect handling
 - Area damage systems
 - Pickup attraction systems
+- EXP Vacuum pickup system
 - UI state management
 - Camera feedback systems
 - Input-driven menu navigation
@@ -324,6 +338,7 @@ Systems are designed to support:
 - Multiple simultaneous projectiles
 - Persistent area effects
 - High-action combat scenarios
+- Rapid experience collection through vacuum-style pickup behavior
 
 while remaining responsive and readable.
 
@@ -386,6 +401,7 @@ CircleSurvivor is currently fully playable and includes:
 - Burn and shock interactions
 - Critical effect inheritance
 - Experience and leveling systems
+- EXP Vacuum pickup system
 - Upgrade selection system
 - Camera shake
 - Damage numbers
