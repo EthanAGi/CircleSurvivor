@@ -2,71 +2,43 @@
 
 A fast-paced survival game where every second matters.
 
-Fight through relentless enemy waves, evolve your build through powerful upgrades, and survive as long as possible in an ever-escalating arena of chaos.
+Fight endless enemy waves, evolve your build through upgrades and synergies, and survive as long as possible in an increasingly chaotic arena.
 
 ---
 
 # Overview
 
-CircleSurvivor is a top-down survival game inspired by roguelike and bullet-heaven gameplay.
+CircleSurvivor is a top-down roguelike survival game inspired by bullet-heaven gameplay.
 
-You begin each run with one goal:
+Each run focuses on:
+- Surviving escalating enemy waves
+- Collecting EXP and leveling up
+- Building powerful weapon combinations
+- Creating chaotic upgrade synergies
 
-> **Stay alive.**
-
-Enemies continuously grow stronger as you defeat them, collect experience, and level up through randomized upgrades and weapon synergies.
-
-Every run evolves differently depending on:
-- Upgrade choices
-- Weapon combinations
-- Positioning
-- Enemy scaling
-
-The longer you survive, the more chaotic the arena becomes.
+Every run evolves differently depending on your build choices and survival strategy.
 
 ---
 
 # Gameplay Loop
 
 1. Enter the arena  
-2. Fight endless enemy waves  
-3. Collect EXP pickups  
+2. Defeat enemies  
+3. Collect EXP  
 4. Level up and choose upgrades  
-5. Build powerful synergies  
+5. Build synergies  
 6. Survive as long as possible  
 
 ---
 
 # Features
 
-## Combat System
-
-### Weapons
-
-#### Bullets
-- Rapid-fire projectile damage
-- Reliable sustained DPS
-- Can inherit critical effects
-
-#### Missiles
-- Homing explosive projectiles
-- Area-of-effect explosions
-- Burn effect support
-
-#### Lightning
-- Instant-hit chain attacks
-- Burst damage and shock synergy
-- Area strike damage
-
-#### Orbitals
-- Rotating projectiles around the player
-- Constant close-range damage
-- Area control utility
-
-#### Forcefield
-- Persistent defensive aura
-- Damages nearby enemies automatically
-- Scales into near-constant protection
+## Weapons
+- **Bullets** — Rapid-fire sustained damage
+- **Missiles** — Homing explosive projectiles with burn effects
+- **Lightning** — Instant-hit chain attacks with shock synergy
+- **Orbitals** — Rotating projectiles for area control
+- **Forcefield** — Persistent close-range defensive damage aura
 
 ---
 
@@ -76,16 +48,14 @@ The longer you survive, the more chaotic the arena becomes.
 Damage-over-time effect applied through explosive attacks.
 
 ## Shock
-Enhances chain damage and lightning interactions.
+Enhances lightning interactions and chain damage.
 
 ## Critical Effects
-Critical hits can inherit special effects such as:
+Critical hits can trigger:
 - Explosions
 - Burn
 - Shock
 - Cross-weapon synergies
-
-This allows builds to evolve into chaotic chain-reaction setups.
 
 ---
 
@@ -94,32 +64,31 @@ This allows builds to evolve into chaotic chain-reaction setups.
 ## Scaling Difficulty
 Enemy pressure increases over time through:
 - Faster spawns
-- Larger enemy counts
+- Higher enemy counts
 - Increased speed
-- Higher durability
+- Greater durability
 
 ## Enemy Types
-Includes:
 - Melee enemies
 - Projectile enemies
-- Fast-moving threats
+- Fast enemies
 - Elite enemies
 
 ## Elite Enemies
-Powerful enemies that appear periodically with:
+Periodic stronger enemies with:
 - Increased health
-- Increased speed
-- Higher damage output
+- Higher speed
+- Increased damage
 
 ---
 
 # Progression Systems
 
 ## Experience & Leveling
-Defeated enemies drop EXP pickups used to level up and unlock upgrades.
+Enemies drop EXP pickups used for leveling and upgrades.
 
 ## EXP Vacuum
-A special pickup that pulls nearby experience toward the player, improving pacing and reducing backtracking.
+Special pickup that attracts nearby EXP toward the player.
 
 ## Build Variety
 Runs evolve through:
@@ -133,34 +102,34 @@ Runs evolve through:
 # Player Systems
 
 ## Responsive Movement
-Movement is built around precision and constant repositioning.
+Movement emphasizes precision and repositioning.
 
 ## Invulnerability Frames
 After taking damage:
-- The player briefly becomes invulnerable
-- The player sprite flashes visually
+- Temporary invulnerability activates
+- Player sprite flashes visually
 
 ## Camera Follow
-The camera remains centered on the player and reacts dynamically during combat.
+Dynamic camera tracking with combat feedback effects.
 
 ---
 
 # Combat Feedback
 
 ## Damage Numbers
-Floating damage indicators improve combat readability and critical hit visibility.
+Floating damage indicators improve readability.
 
 ## Camera Shake
-The camera reacts dynamically when taking damage to reinforce impact.
+Dynamic camera shake reinforces combat impact.
 
 ## Visual Clarity
-Enemy health is represented visually through color changes instead of traditional health bars.
+Enemy health is represented through color changes instead of health bars.
 
 ---
 
 # UI & Navigation
 
-The game supports both keyboard and mouse controls.
+Supports both keyboard and mouse controls.
 
 ## Included Menus
 - Main Menu
@@ -171,7 +140,6 @@ The game supports both keyboard and mouse controls.
 - Game Over Screen
 
 ## Level-Up Interface
-Supports:
 - Keyboard navigation
 - Mouse selection
 - Skip functionality
@@ -184,7 +152,7 @@ Supports:
 Built using a modular scene-based structure in Godot.
 
 Implemented systems include:
-- Modular weapon architecture
+- Modular weapons
 - Enemy spawning and scaling
 - Status effects
 - Area damage systems
@@ -202,15 +170,15 @@ Implemented systems include:
 # Technical Highlights
 
 ## Modular Weapon Design
-Weapons operate through separate scenes and scripts for scalability and maintainability.
+Weapons use separate scenes and scripts for scalability and maintainability.
 
 ## Dynamic Difficulty Scaling
-Enemy pressure ramps continuously throughout each run.
+Enemy intensity ramps continuously throughout each run.
 
 ## Performance-Oriented Design
-Built to support:
+Designed to support:
 - Large enemy counts
-- Multiple simultaneous projectiles
+- Multiple projectiles
 - Persistent area effects
 - High-action combat
 
@@ -220,16 +188,14 @@ while remaining responsive and readable.
 
 # Design Philosophy
 
-CircleSurvivor is built around three core principles:
-
 ## Readability
 Combat should remain visually understandable during chaos.
 
 ## Responsiveness
-Movement, attacks, and menus should always feel smooth and immediate.
+Movement, combat, and UI should feel smooth and immediate.
 
 ## Synergy
-Weapons, upgrades, and status effects are designed to combine into powerful interactions.
+Weapons and upgrades are designed to combine into powerful builds.
 
 ---
 
@@ -254,9 +220,8 @@ Weapons, upgrades, and status effects are designed to combine into powerful inte
 
 ---
 
-# Current State
+# Current Features
 
-## Implemented Features
 - Smooth player movement
 - Multiple weapon systems
 - Orbitals
@@ -317,7 +282,7 @@ Game Developer
 
 # About the Project
 
-CircleSurvivor serves as both:
+CircleSurvivor is both:
 - A fully playable survival game
 - A long-term systems-focused game development project
 
