@@ -454,6 +454,9 @@ func _setup_camera() -> void:
 	screen_shake_camera.rotation_smoothing_enabled = false
 
 func _shake_screen(amount: float) -> void:
+	if not GameSettings.screen_shake_enabled:
+		return
+
 	if screen_shake_camera == null:
 		return
 
@@ -1127,6 +1130,9 @@ func _on_player_damaged(damage_position: Vector2, amount: int) -> void:
 	_shake_screen(PLAYER_HIT_SCREEN_SHAKE)
 
 func _spawn_damage_number(world_position: Vector2, amount: int, color: Color) -> void:
+	if not GameSettings.damage_numbers_enabled:
+		return
+
 	if damage_number_script == null:
 		return
 

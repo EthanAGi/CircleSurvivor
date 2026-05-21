@@ -42,12 +42,22 @@ layout_mode = 2
 layout_mode = 2
 text = "Options"
 
-[node name="InfoLabel" type="Label" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer" unique_id=1742308290]
-layout_mode = 2
-text = "Options menu coming soon"
-autowrap_mode = 2
-justification_flags = 162
-
 [node name="BackButton" type="Button" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer" unique_id=798345329]
 layout_mode = 2
 text = "Back"
+
+[node name="FullscreenCheckButton" type="CheckButton" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer" unique_id=1485441725]
+layout_mode = 2
+text = "Fullscreen"
+
+[node name="ScreenShakeCheckButton" type="CheckButton" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer" unique_id=42549231]
+layout_mode = 2
+text = "Screen Shake"
+
+[node name="DamageNumbersCheckButton" type="CheckButton" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer" unique_id=1432922257]
+layout_mode = 2
+text = "Damage Numbers"
+
+[node name="ResetButton" type="Button" parent="CenterContainer/PanelContainer/MarginContainer/VBoxContainer" unique_id=111072183]
+layout_mode = 2
+text = "Reset Options"
